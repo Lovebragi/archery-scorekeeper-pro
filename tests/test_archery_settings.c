@@ -83,9 +83,9 @@ static void test_adjust(void) {
     assert(archery_settings_adjust(&settings, 2, 1));
     assert(settings.brightness == 60);
 
-    // 息屏时间：默认 15 -> 30
+    // 息屏时间：默认 0（不息屏）-> 15
     assert(archery_settings_adjust(&settings, 3, 1));
-    assert(settings.off_seconds == 30);
+    assert(settings.off_seconds == 15);
     settings.off_seconds = 0;
     assert(!archery_settings_adjust(&settings, 3, -1));
     assert(settings.off_seconds == 0);

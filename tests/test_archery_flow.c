@@ -465,7 +465,7 @@ static void test_settings_page(void) {
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 3);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.off_seconds == 30);
+    assert(flow.settings.off_seconds == 15);
 
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 4);
