@@ -70,6 +70,8 @@ uint16_t archery_settings_off_at(uint8_t index);
 // 调整某一项：row 0 = 靶型，row 1 = 屏幕方向，row 2 = 亮度，row 3 = 息屏时间，
 // row 4 = 记录内十，row 6 = 语音输入，row 7 = 提示音量。在可选值表上钳制，不回绕；返回值是否真的改了。
 bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delta);
+// 归一化互斥项：语音录靶开启时关闭滚动录入。
+void archery_settings_normalize(archery_settings_t *settings);
 
 // 编码/解码（magic + 版本 + 字段 + CRC16），用于 NVS 中的一条 blob。
 // 解码兼容旧版 8 字节格式（靶型按 40 半靶处理）。

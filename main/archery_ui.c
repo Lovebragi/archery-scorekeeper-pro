@@ -45,6 +45,7 @@
 static lv_obj_t *s_screen;
 static lv_obj_t *s_timer_title;
 static lv_obj_t *s_timer_clock;
+static lv_obj_t *s_clock_label;
 static lv_obj_t *s_timer_hint;
 static const archery_wifi_view_t *s_wifi_view;
 
@@ -161,6 +162,7 @@ static void add_status_bar(lv_obj_t *scr, const archery_flow_t *flow,
                  (unsigned)dt.minute);
     }
     lv_obj_t *clock = make_label(scr, time_text, ARCHERY_FONT_BODY, C_MUTED);
+    s_clock_label = clock;
     lv_obj_align(clock, LV_ALIGN_TOP_RIGHT, -42, 4);
 
     // 只有联网时才画信号格；未联网/配网中留空。
@@ -1245,4 +1247,17 @@ void archery_ui_clear(void) {
         lv_obj_delete(s_screen);
         s_screen = NULL;
     }
+    s_clock_label = NULL;
+}
+
+
+void archery_ui_update_clock(uint32_t now, bool set) {
+    if (!s_clock_label) return;
+    char text[8] = "--:--";
+    if (set) {
+        archery_datetime_t dt;
+        archery_seconds_to_datetime(now, &dt);
+        snprintf(text, sizeof(text), "%02u:%02u", (unsigned)dt.hour, (unsigned)dt.minute);
+    }
+    lv_label_set_text(s_clock_label, text);
 }

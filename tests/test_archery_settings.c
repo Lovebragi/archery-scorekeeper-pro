@@ -24,7 +24,7 @@ static void test_defaults_and_valid(void) {
     assert(settings.rotate == 1);
     assert(settings.brightness == ARCHERY_SETTINGS_DEFAULT_BRIGHTNESS);
     assert(settings.off_seconds == ARCHERY_SETTINGS_DEFAULT_OFF_SECONDS);
-    assert(settings.record_x == 1);
+    assert(settings.record_x == 0);
     assert(archery_settings_valid(&settings));
     assert(!archery_settings_valid(NULL));
 
@@ -90,11 +90,11 @@ static void test_adjust(void) {
     assert(!archery_settings_adjust(&settings, 3, -1));
     assert(settings.off_seconds == 0);
 
-    // 记录内十：默认开，任一方向切换
+    // 记录内十：默认关，任一方向切换
     assert(archery_settings_adjust(&settings, 4, 1));
-    assert(settings.record_x == 0);
-    assert(archery_settings_adjust(&settings, 4, -1));
     assert(settings.record_x == 1);
+    assert(archery_settings_adjust(&settings, 4, -1));
+    assert(settings.record_x == 0);
 
     // 每组计时：关 -> 20 -> 30 -> 40，边界钳制
     assert(settings.timer_seconds == 0);

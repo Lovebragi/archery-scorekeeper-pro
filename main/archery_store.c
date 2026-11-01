@@ -311,6 +311,7 @@ esp_err_t archery_settings_load(archery_settings_t *settings) {
     err = nvs_get_blob(handle, SETTINGS_KEY, buffer, &length);
     archery_settings_t loaded;
     if (err == ESP_OK && archery_settings_decode(&loaded, buffer, length)) {
+        archery_settings_normalize(&loaded);
         *settings = loaded;
     } else if (err != ESP_ERR_NVS_NOT_FOUND) {
         ESP_LOGW(TAG, "设置数据不可用(%s)，使用默认值", esp_err_to_name(err));

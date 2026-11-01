@@ -55,6 +55,7 @@ typedef enum {
     APP_MSG_REFRESH,
     APP_MSG_VOICE_OK,
     APP_MSG_VOICE_FAIL,
+    APP_MSG_AUTO_CHECK_RESULT,
 } app_msg_type_t;
 
 typedef struct {
@@ -92,6 +93,8 @@ static key_guard_t s_key_guard;
 static int64_t s_wake_click_until_us;
 static int64_t s_next_wifi_retry_us;
 static uint8_t s_wifi_retry_step;
+static bool s_wifi_prev_connected;
+static bool s_wifi_need_all;
 static esp_timer_handle_t s_diag_timer;
 static esp_timer_handle_t s_timer_tick;
 static bool s_timer_running;
@@ -106,6 +109,7 @@ static int64_t s_clock_base_us;
 static bool s_clock_set;
 static uint32_t s_clock_saved;
 static int64_t s_next_clock_save_us;
+static uint32_t s_last_clock_minute;
 static uint32_t s_session_when;
 static archery_wifi_view_t s_wifi_view;
 // 密码页长按上/下连发：方向、下一次触发时间、是否吞掉松开时的单击。
@@ -165,7 +169,7 @@ static void redraw(void) {
     archery_flow_set_clock(&s_flow, clock_now(), s_clock_set);
     sync_wifi_flow();
     archery_ui_set_wifi_view(&s_wifi_view);
-    archery_ui_set_voice_status(s_flow.settings.voice_enabled ? archery_voice_status()
+    archery_ui_set_voice_status(archery_flow_voice_enabled(&s_flow) ? archery_voice_status()
                                                               : "");
     if (!bsp_lvgl_lock(500)) {
         ESP_LOGW(TAG, "获取 LVGL 锁超时，跳过本次重绘");
@@ -200,6 +204,7 @@ static void refresh_history_count(void) {
 }
 
 static void apply_settings(const archery_settings_t *settings) {
+    archery_flow_clear_runtime_entries(&s_flow);
     // 画面方向与亮度立即生效；息屏时间由 worker 的空闲判断直接读取 flow 里的副本。
     // 改 MADCTL 时先拿 LVGL 锁，避免和正在进行的刷屏并发。
     s_rotate_keys = settings->rotate != 0;
@@ -453,38 +458,42 @@ void archery_app_refresh(void) {
 
 static volatile bool s_auto_checking;
 static int64_t s_auto_deadline_us;
+static int64_t s_auto_check_started_us;
 
 static void auto_check_task(void *arg) {
     (void)arg;
-    bool ok = archery_wifi_connected() && archery_voice_has_credentials();
-    if (ok) ok = archery_voice_test_credentials();
-    s_flow.settings.voice_enabled = ok ? 1u : 0u;
-    s_flow.settings.roll_entry = ok ? 0u : 1u;
-    apply_settings(&s_flow.settings);
-    (void)archery_settings_save(&s_flow.settings);
+    // 后台只做网络检测，不碰设置和界面。
+    const bool ok = archery_voice_test_credentials();
+    if (s_queue) {
+        const app_message_t message = {
+            .type = APP_MSG_AUTO_CHECK_RESULT,
+            .key = ok ? ARCHERY_KEY_OK : ARCHERY_KEY_DOWN,
+        };
+        (void)xQueueSend(s_queue, &message, 0);
+    }
+    vTaskDelete(NULL);
+}
+
+static void apply_auto_check_result(bool ok) {
+    s_auto_checking = false;
+    archery_flow_set_runtime_entries(&s_flow, ok, !ok);
     s_flow.auto_check_ok = ok ? 1u : 0u;
     s_flow.auto_check_done = 1;
+    s_auto_check_started_us = 0;
     s_auto_deadline_us = esp_timer_get_time() + 3000000;
     archery_voice_set_status(ok ? "自动检测：语音可用" : "自动检测：语音不可用");
-    s_auto_checking = false;
-    archery_app_refresh();
-    vTaskDelete(NULL);
+    redraw();
 }
 
 static void auto_check_start(void) {
     if (s_auto_checking) return;
     s_auto_checking = true;
     s_flow.auto_check_done = 0;
+    s_auto_check_started_us = esp_timer_get_time();
     s_auto_deadline_us = 0;
     archery_voice_set_status("正在检测语音服务");
     if (xTaskCreate(auto_check_task, "auto_check", 8192, NULL, 3, NULL) != pdPASS) {
-        s_auto_checking = false;
-        s_flow.auto_check_ok = 0;
-        s_flow.auto_check_done = 1;
-        s_flow.settings.voice_enabled = 0;
-        s_flow.settings.roll_entry = 1;
-        apply_settings(&s_flow.settings);
-        s_auto_deadline_us = esp_timer_get_time() + 3000000;
+        apply_auto_check_result(false);
     }
     redraw();
 }
@@ -603,6 +612,9 @@ static void handle_key(archery_key_t key) {
     }
     s_repeat_inflight = false;
     sync_detail_group();
+    if (s_flow.page == ARCHERY_PAGE_HOME) {
+        archery_flow_clear_runtime_entries(&s_flow);
+    }
     redraw();
 }
 
@@ -618,10 +630,10 @@ static archery_button_t physical_button(bsp_btn_t btn) {
 static void repeat_timer_cb(void *arg) {
     (void)arg;
     const bool entry_repeat = s_flow.page == ARCHERY_PAGE_ENTRY &&
-                              s_flow.settings.roll_entry;
+                              archery_flow_roll_entry(&s_flow);
     const bool settings_repeat = s_flow.page == ARCHERY_PAGE_SETTINGS;
     const bool setup_repeat = s_flow.page == ARCHERY_PAGE_SETUP &&
-                              s_flow.settings.roll_entry && s_flow.setup_row <= 1u;
+                              archery_flow_roll_entry(&s_flow) && s_flow.setup_row <= 1u;
     const bool clock_repeat = s_flow.page == ARCHERY_PAGE_CLOCK;
     if (!s_repeat_active || (s_flow.page != ARCHERY_PAGE_HISTORY &&
                              s_flow.page != ARCHERY_PAGE_DIAG_LOG && !entry_repeat && !settings_repeat &&
@@ -705,7 +717,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
             (void)esp_timer_start_once(s_diag_timer, 3000000);
         }
         if (pressed == ARCHERY_KEY_UP && s_flow.page == ARCHERY_PAGE_ENTRY &&
-            s_flow.settings.voice_enabled && !s_flow.settings.roll_entry && s_ptt_timer) {
+            archery_flow_voice_enabled(&s_flow) && !archery_flow_roll_entry(&s_flow) && s_ptt_timer) {
             (void)esp_timer_stop(s_ptt_timer);
             (void)esp_timer_start_once(s_ptt_timer, 200000);
         }
@@ -726,7 +738,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
             (void)xQueueSend(s_queue, &step, 0);
             (void)esp_timer_start_periodic(s_repeat_timer, 300000);
         } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
-            s_flow.page == ARCHERY_PAGE_SETUP && s_flow.settings.roll_entry &&
+            s_flow.page == ARCHERY_PAGE_SETUP && archery_flow_roll_entry(&s_flow) &&
             s_flow.setup_row <= 1u && s_repeat_timer) {
             s_repeat_key = pressed;
             s_repeat_active = true;
@@ -750,7 +762,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
             (void)xQueueSend(s_queue, &step, 0);
             (void)esp_timer_start_once(s_repeat_timer, 500000);
         } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
-            s_flow.page == ARCHERY_PAGE_ENTRY && s_flow.settings.roll_entry &&
+            s_flow.page == ARCHERY_PAGE_ENTRY && archery_flow_roll_entry(&s_flow) &&
             s_repeat_timer) {
             s_repeat_key = pressed;
             s_repeat_active = true;
@@ -801,7 +813,7 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
         if ((s_flow.page == ARCHERY_PAGE_ENTRY ||
              s_flow.page == ARCHERY_PAGE_CLOCK ||
              (s_flow.page == ARCHERY_PAGE_SETUP && s_flow.setup_row <= 1u)) &&
-            (s_flow.page == ARCHERY_PAGE_CLOCK || s_flow.settings.roll_entry) &&
+            (s_flow.page == ARCHERY_PAGE_CLOCK || archery_flow_roll_entry(&s_flow)) &&
             !archery_flow_button_is_ok(physical, s_rotate_keys)) {
             return;  // 滚动录入开启时上/下没有短按行为
         }
@@ -1037,7 +1049,7 @@ static void worker_task(void *argument) {
                     if (!try_saved_wifi(message.key)) handle_key(message.key);
                 }
             } else if (message.type == APP_MSG_VOICE_START) {
-                if (s_flow.page == ARCHERY_PAGE_ENTRY && s_flow.settings.voice_enabled &&
+                if (s_flow.page == ARCHERY_PAGE_ENTRY && archery_flow_voice_enabled(&s_flow) &&
                     (archery_voice_enabled() || archery_voice_has_credentials()) &&
                     !archery_voice_active()) {
                     const bool faces = archery_flow_target_has_faces(s_flow.session.target);
@@ -1059,6 +1071,12 @@ static void worker_task(void *argument) {
             } else if (message.type == APP_MSG_VOICE_FAIL) {
                 archery_voice_play_config_failed();
                 redraw();
+            } else if (message.type == APP_MSG_AUTO_CHECK_RESULT) {
+                if (s_flow.page == ARCHERY_PAGE_AUTO_CHECK && !s_flow.auto_check_done) {
+                    apply_auto_check_result(message.key == ARCHERY_KEY_OK);
+                } else {
+                    s_auto_checking = false;
+                }
             } else if (message.type == APP_MSG_HISTORY_FILTER) {
                 if (archery_flow_history_cycle_filter(&s_flow) ==
                     ARCHERY_ACT_HISTORY_FILTER) {
@@ -1083,32 +1101,56 @@ static void worker_task(void *argument) {
             refresh_battery();
             s_next_battery_us = now + (int64_t)BATTERY_POLL_MS * 1000;
         }
+        const uint32_t minute_now = clock_now() / 60u;
+        if (minute_now != s_last_clock_minute) {
+            s_last_clock_minute = minute_now;
+            if (bsp_lvgl_lock(100)) {
+                archery_ui_update_clock(clock_now(), s_clock_set);
+                bsp_lvgl_unlock();
+            }
+        }
         if (now >= s_next_clock_save_us) {
             // 每 5 分钟把时钟基准写一次 NVS；写入内容很小，磨损可忽略。
             clock_persist(false);
             s_next_clock_save_us = now + (int64_t)300 * 1000000;
         }
         // 录入页若发现 Wi-Fi 掉了（浅睡、路由器重启），自动重连，避免语音前还要手动连。
+        if (s_flow.page == ARCHERY_PAGE_AUTO_CHECK && !s_flow.auto_check_done &&
+            s_auto_check_started_us > 0 && now - s_auto_check_started_us >= 10 * 1000000) {
+            apply_auto_check_result(false);
+        }
         if (s_flow.page == ARCHERY_PAGE_AUTO_CHECK && s_flow.auto_check_done &&
             s_auto_deadline_us > 0 && now >= s_auto_deadline_us) {
             s_auto_deadline_us = 0;
             archery_flow_enter_setup(&s_flow);
             redraw();
         }
-        if (archery_wifi_connected()) {
+        const bool wifi_now = archery_wifi_connected();
+        if (wifi_now) {
             s_wifi_retry_step = 0;
             s_next_wifi_retry_us = 0;
-        } else if (s_flow.settings.auto_reconnect &&
-                   s_flow.page != ARCHERY_PAGE_WIFI &&
-                   s_flow.page != ARCHERY_PAGE_WIFI_PASSWORD &&
-                   !archery_wifi_provisioning() &&
-                   now >= s_next_wifi_retry_us) {
-            static const uint32_t backoff[] = {30, 60, 120, 300, 600};
-            (void)archery_wifi_reconnect();
-            const uint32_t seconds = backoff[s_wifi_retry_step < 5 ? s_wifi_retry_step : 4];
-            if (s_wifi_retry_step < 5) s_wifi_retry_step++;
-            s_next_wifi_retry_us = now + (int64_t)seconds * 1000000;
+        } else {
+            if (s_wifi_prev_connected) s_wifi_need_all = true;
+            if (s_flow.settings.auto_reconnect &&
+                archery_wifi_auto_reconnect_enabled() &&
+                !archery_wifi_retry_active() &&
+                s_flow.page != ARCHERY_PAGE_WIFI &&
+                s_flow.page != ARCHERY_PAGE_WIFI_PASSWORD &&
+                !archery_wifi_provisioning() &&
+                now >= s_next_wifi_retry_us) {
+                static const uint32_t backoff[] = {30, 60, 120, 300, 600};
+                if (s_wifi_need_all || (s_wifi_retry_step % 3u) == 0u) {
+                    archery_wifi_retry_saved_async();
+                    s_wifi_need_all = false;
+                } else {
+                    (void)archery_wifi_reconnect();
+                }
+                const uint32_t seconds = backoff[s_wifi_retry_step < 5 ? s_wifi_retry_step : 4];
+                if (s_wifi_retry_step < 5) s_wifi_retry_step++;
+                s_next_wifi_retry_us = now + (int64_t)seconds * 1000000;
+            }
         }
+        s_wifi_prev_connected = wifi_now;
         const uint16_t off_seconds = s_flow.settings.off_seconds;
         if (off_seconds > 0 &&
             now - s_last_input_us >= (int64_t)off_seconds * 1000000 &&

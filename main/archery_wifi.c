@@ -82,6 +82,8 @@ static bool load_credentials(char *ssid, size_t ssid_size, char *pass, size_t pa
 static bool s_save_enabled = true;
 // 用户主动断开后不再自动重连；下次手动连接时恢复。
 static bool s_auto_reconnect = true;
+static volatile bool s_retry_cancel;
+static volatile bool s_retry_in_connect;
 static char s_connect_pass[ARCHERY_WIFI_PASS_SIZE];
 static bool s_save_pending;
 
@@ -89,6 +91,7 @@ void archery_wifi_set_save_enabled(bool enabled) { s_save_enabled = enabled; }
 bool archery_wifi_save_enabled(void) { return s_save_enabled; }
 
 void archery_wifi_set_auto_reconnect(bool enabled) { s_auto_reconnect = enabled; }
+bool archery_wifi_auto_reconnect_enabled(void) { return s_auto_reconnect; }
 
 void archery_wifi_forget_credentials(void) {
     nvs_handle_t handle;
@@ -192,6 +195,7 @@ static void scan_task(void *arg) {
 
 esp_err_t archery_wifi_scan(void) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
+    archery_wifi_retry_cancel();
     if (s_view.state == ARCHERY_WIFI_SCANNING) return ESP_OK;
     if (s_view.state == ARCHERY_WIFI_CONNECTING) (void)esp_wifi_disconnect();
     if (xTaskCreate(scan_task, "wifi_scan", 4096, NULL, 4, NULL) != pdPASS) {
@@ -203,6 +207,7 @@ esp_err_t archery_wifi_scan(void) {
 // ---------------------------------------------------------------- 连接
 esp_err_t archery_wifi_connect(const char *ssid, const char *password) {
     if (!s_inited || !ssid || !ssid[0]) return ESP_ERR_INVALID_ARG;
+    if (!s_retry_in_connect) s_retry_cancel = true;
     s_auto_reconnect = true;
     strncpy(s_connect_pass, password ? password : "", sizeof(s_connect_pass) - 1);
     s_connect_pass[sizeof(s_connect_pass) - 1] = '\0';
@@ -234,6 +239,39 @@ esp_err_t archery_wifi_connect_index(uint8_t index) {
         return archery_wifi_start_provisioning(s_view.ssid[index]);
     }
     return archery_wifi_connect(s_view.ssid[index], "");
+}
+
+static volatile bool s_retry_saved_active;
+
+static void retry_saved_task(void *arg) {
+    (void)arg;
+    archery_wifi_store_t store;
+    if (archery_wifi_store_load(&store)) {
+        for (uint8_t i = 0; i < store.count; i++) {
+            if (s_connected || s_retry_cancel) break;
+            s_retry_in_connect = true;
+            (void)archery_wifi_connect(store.items[i].ssid, store.items[i].pass);
+            s_retry_in_connect = false;
+            for (int tick = 0; tick < 20 && !s_connected; tick++) {
+                vTaskDelay(pdMS_TO_TICKS(500));
+                if (s_retry_cancel || s_view.state == ARCHERY_WIFI_FAILED) break;
+            }
+        }
+    }
+    s_retry_saved_active = false;
+    vTaskDelete(NULL);
+}
+
+void archery_wifi_retry_cancel(void) { s_retry_cancel = true; }
+bool archery_wifi_retry_active(void) { return s_retry_saved_active; }
+
+void archery_wifi_retry_saved_async(void) {
+    if (s_retry_saved_active || s_connected) return;
+    s_retry_cancel = false;
+    s_retry_saved_active = true;
+    if (xTaskCreate(retry_saved_task, "wifi_retry", 4096, NULL, 3, NULL) != pdPASS) {
+        s_retry_saved_active = false;
+    }
 }
 
 static bool s_suspended_for_sleep;
@@ -270,6 +308,7 @@ esp_err_t archery_wifi_reconnect(void) {
 
 esp_err_t archery_wifi_disconnect(void) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
+    archery_wifi_retry_cancel();
     s_auto_reconnect = false;
     esp_wifi_disconnect();
     s_connected = false;
@@ -826,6 +865,7 @@ static void dns_task(void *arg) {
 
 esp_err_t archery_wifi_start_provisioning(const char *preset_ssid) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
+    archery_wifi_retry_cancel();
     if (s_provisioning) return ESP_OK;
 
     // 先在 STA 模式扫描一次；热点与扫描同时进行会打断手机连接。

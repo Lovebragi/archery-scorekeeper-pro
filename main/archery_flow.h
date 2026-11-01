@@ -123,6 +123,9 @@ typedef struct {
     uint8_t wifi_mode;      // 0 = 菜单, 1 = 扫描结果列表
     bool wifi_provisioning; // 配网热点是否正在运行（由上层同步，决定"确定"是开还是停）
     uint8_t wifi_ap_count;  // 扫描到的网络数（列表末行是"返回"）
+    uint8_t runtime_override; // 1 = 使用本次运行覆盖（不写用户设置）
+    uint8_t runtime_voice;
+    uint8_t runtime_roll;
     uint8_t auto_check_ok;    // 自动训练检测结果
     uint8_t auto_check_done;
     uint8_t beta_row;
@@ -167,6 +170,10 @@ void archery_flow_set_clock(archery_flow_t *flow, uint32_t now, bool time_set);
 void archery_flow_set_wifi_scan(archery_flow_t *flow, uint8_t ap_count);
 void archery_flow_set_wifi_security(archery_flow_t *flow, uint8_t secure_mask);
 void archery_flow_enter_setup(archery_flow_t *flow);
+uint8_t archery_flow_voice_enabled(const archery_flow_t *flow);
+uint8_t archery_flow_roll_entry(const archery_flow_t *flow);
+void archery_flow_set_runtime_entries(archery_flow_t *flow, bool voice, bool roll);
+void archery_flow_clear_runtime_entries(archery_flow_t *flow);
 // 配网热点开关状态由上层同步；菜单第 2 行在配网中再按"确定"表示停止配网。
 void archery_flow_set_wifi_provisioning(archery_flow_t *flow, bool active);
 

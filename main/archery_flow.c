@@ -170,6 +170,28 @@ static uint8_t face_arrow_offset(const archery_flow_t *flow, uint8_t face) {
     return offset;
 }
 
+uint8_t archery_flow_voice_enabled(const archery_flow_t *flow) {
+    return flow ? (flow->runtime_override ? flow->runtime_voice : flow->settings.voice_enabled) : 0u;
+}
+
+uint8_t archery_flow_roll_entry(const archery_flow_t *flow) {
+    return flow ? (flow->runtime_override ? flow->runtime_roll : flow->settings.roll_entry) : 0u;
+}
+
+void archery_flow_set_runtime_entries(archery_flow_t *flow, bool voice, bool roll) {
+    if (!flow) return;
+    flow->runtime_override = 1;
+    flow->runtime_voice = voice ? 1u : 0u;
+    flow->runtime_roll = roll ? 1u : 0u;
+}
+
+void archery_flow_clear_runtime_entries(archery_flow_t *flow) {
+    if (!flow) return;
+    flow->runtime_override = 0;
+    flow->runtime_voice = 0;
+    flow->runtime_roll = 0;
+}
+
 void archery_flow_enter_setup(archery_flow_t *flow) {
     flow->setup_row = 0;
     if (archery_flow_target_has_faces(flow->settings.target) &&
@@ -225,6 +247,7 @@ static archery_act_t handle_home(archery_flow_t *flow, archery_key_t key) {
                 flow->page = ARCHERY_PAGE_AUTO_CHECK;
                 return ARCHERY_ACT_AUTO_CHECK;
             }
+            archery_flow_clear_runtime_entries(flow);
             archery_flow_enter_setup(flow);
         } else if (flow->home_select == 1) {
             flow->history_cursor = 0;

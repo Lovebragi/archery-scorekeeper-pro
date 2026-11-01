@@ -10,10 +10,6 @@ an item is implemented or re-scoped.
 
 ## P0 — logic correctness
 
-- **Separate runtime overrides from saved settings.** Auto training currently
-  mutates `s_flow.settings`; the Settings page then shows temporary values and a
-  later unrelated save can persist them. Introduce runtime override fields for
-  voice/roll entry and clear them at session end or reboot.
 - **Finish the automatic reconnect policy.** Current code retries only the last
   saved SSID. Target: on disconnect try all saved SSIDs once; if all fail retry
   the last SSID with 30 s → 60 s → 2 min → 5 min → 10 min backoff; every third
@@ -36,8 +32,6 @@ an item is implemented or re-scoped.
 - **Countdown clip consistency.** System/Xiaodou clips are 600 ms but speech
   length and trailing silence still differ; 7 still sounds cut. Regenerate with
   uniform pace or normalize the speech section.
-- **Lightweight clock refresh.** Minute changes currently rebuild the whole
-  page; update only the status-bar time label.
 - **Saved-network management.** Add “clear saved networks” and show which
   networks are saved; stale bad passwords cannot be removed otherwise.
 - **Password page discoverability.** Double-click to connect is correct but not
@@ -51,6 +45,19 @@ an item is implemented or re-scoped.
   auto-check result application, Wi-Fi password flow and saved-network fallback.
 - **Release discipline.** Beta builds go to GitHub prereleases only; submit to
   the community after a stable version is validated.
+
+## Real-world scenarios — pending audit (1.4.8)
+
+- Training data is not checkpointed; power loss, crash, or accidental abort loses the whole session. Add session recovery or periodic draft storage.
+- Automatic training overrides a user's explicit voice/roll choice. Decide whether auto mode always wins, or respect a manual choice and show what was overridden.
+- Settings save semantics differ: main Settings saves on long OK, but Beta submenu toggles are not persisted until the user saves Settings again. Auto-save on leaving Beta or show an unsaved marker.
+- Auto reconnect can run during a voice session or timed training. Pause reconnect while voice/PTT or a running timer is active.
+- A failed saved-network attempt can redirect to the wrong password page if the user selects another network before the failure event. Match pending attempts by SSID and target row.
+- Audio contention: countdown clips, prompt beeps, and voice recognition can overlap. Serialize audio or block PTT during countdown.
+- Time: fixed UTC+8, no DST/timezone; NTP can overwrite a manual clock without telling the user; the clock page fields do not live-refresh.
+- Power: no low-battery warning or graceful shutdown; screen-off may trigger while aiming; NVS writes can be interrupted by power loss.
+- Security: API key is stored in plaintext NVS and the provisioning page has no access control.
+- Recoverability: retry task has a short non-cancellable window inside a connect call; history cannot edit/delete a single group; no keypad fallback shortcut after ASR failure.
 
 ## Future ideas
 
@@ -68,3 +75,8 @@ an item is implemented or re-scoped.
 - Roll entry; press-triggered navigation; settings row/value redesign.
 - Network “Verify voice”; password visibility toggles; reconnect backoff switch.
 - Beta submenu with automatic training and automatic reconnect switches.
+- Runtime voice/roll overrides separate from saved settings; auto training does
+  not mutate user settings and does not write NVS.
+- Status-bar clock updates by changing one label every minute, without rebuilding
+  the page.
+- “Record inner ten” now defaults to off.

@@ -56,7 +56,7 @@ void archery_settings_defaults(archery_settings_t *settings) {
     settings->rotate = ARCHERY_SETTINGS_DEFAULT_ROTATE;
     settings->brightness = ARCHERY_SETTINGS_DEFAULT_BRIGHTNESS;
     settings->off_seconds = ARCHERY_SETTINGS_DEFAULT_OFF_SECONDS;
-    settings->record_x = 1u;
+    settings->record_x = 0u;
     settings->voice_enabled = ARCHERY_SETTINGS_DEFAULT_VOICE;
     settings->beep_volume = ARCHERY_SETTINGS_DEFAULT_BEEP_VOLUME;
     settings->wifi_save = ARCHERY_SETTINGS_DEFAULT_WIFI_SAVE;
@@ -113,6 +113,11 @@ bool archery_settings_valid(const archery_settings_t *settings) {
            settings->countdown_voice <= 3u &&
            (settings->timer_seconds == 0u || settings->timer_seconds == 20u ||
             settings->timer_seconds == 30u || settings->timer_seconds == 40u);
+}
+
+void archery_settings_normalize(archery_settings_t *settings) {
+    if (!settings) return;
+    if (settings->voice_enabled && settings->roll_entry) settings->roll_entry = 0u;
 }
 
 bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delta) {
