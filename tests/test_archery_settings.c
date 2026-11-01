@@ -150,7 +150,7 @@ static void test_adjust(void) {
     assert(settings.wifi_save == 1);
 
     // 非法行（没有第 9 行）
-    assert(!archery_settings_adjust(&settings, 11, 1));
+    assert(!archery_settings_adjust(&settings, 12, 1));
     assert(!archery_settings_adjust(NULL, 0, 1));
 }
 
