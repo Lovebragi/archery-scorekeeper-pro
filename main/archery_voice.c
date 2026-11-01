@@ -654,6 +654,13 @@ void archery_voice_preview_beep(void) {
     play_tone(1000, 80, 1, 0);
 }
 
+void archery_voice_reopen_audio(void) {
+    s_audio_ready = false;
+    if (bsp_audio_init() == ESP_OK && bsp_audio_set_format(16000, 16, 1) == ESP_OK) {
+        s_audio_ready = true;
+    }
+}
+
 void archery_voice_prepare_audio(void) {
     if (s_audio_ready) return;
     if (bsp_audio_init() == ESP_OK && bsp_audio_set_format(16000, 16, 1) == ESP_OK) {

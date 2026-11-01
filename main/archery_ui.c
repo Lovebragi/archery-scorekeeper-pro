@@ -679,6 +679,27 @@ static void render_wifi(lv_obj_t *scr, const archery_flow_t *flow) {
         return;
     }
 
+    if (flow->wifi_mode == 2) {
+        add_title(scr, "连接 Wi-Fi");
+        if (view->state == ARCHERY_WIFI_CONNECTING) {
+            centered_label(scr, "正在连接", ARCHERY_FONT_TITLE, C_TEXT, 96);
+            centered_label(scr, view->ssid[view->selected][0] ? view->ssid[view->selected]
+                                                             : "选中的网络",
+                           ARCHERY_FONT_BODY, C_GOLD, 136);
+            centered_label(scr, "请稍候…", ARCHERY_FONT_BODY, C_MUTED, 170);
+        } else if (view->sta_connected) {
+            centered_label(scr, "连接成功", ARCHERY_FONT_TITLE, C_GOLD, 110);
+            centered_label(scr, view->ip[0] ? view->ip : "已获取 IP",
+                           ARCHERY_FONT_BODY, C_TEXT, 150);
+        } else {
+            centered_label(scr, "连接失败", ARCHERY_FONT_TITLE, C_TEXT, 110);
+            centered_label(scr, view->message[0] ? view->message : "请检查密码后重试",
+                           ARCHERY_FONT_BODY, C_MUTED, 150);
+        }
+        add_hint(scr, "确定 返回扫描列表", 284);
+        return;
+    }
+
     if (flow->wifi_mode == 1) {
         if (view->state == ARCHERY_WIFI_SCANNING) {
             centered_label(scr, "正在扫描附近 Wi-Fi…", ARCHERY_FONT_BODY, C_MUTED, 40);
@@ -788,7 +809,7 @@ static void render_wifi_password(lv_obj_t *scr, const archery_flow_t *flow) {
     }
 
     add_hint(scr, "上/下 换字符 · 确定 下一位", 212);
-    add_hint(scr, "长按 删除 · 首位长按返回", 238);
+    add_hint(scr, "长按删除 · 双击确定连接", 238);
     add_hint(scr, "长按上/下 快速换字符", 264);
 }
 

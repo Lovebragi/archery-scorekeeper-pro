@@ -53,6 +53,8 @@ typedef enum {
     APP_MSG_DIAG,
     APP_MSG_TIMER_TICK,
     APP_MSG_REFRESH,
+    APP_MSG_VOICE_OK,
+    APP_MSG_VOICE_FAIL,
 } app_msg_type_t;
 
 typedef struct {
@@ -211,6 +213,9 @@ static void apply_settings(const archery_settings_t *settings) {
     }
 }
 
+static bool s_saved_pending;
+static uint8_t s_saved_row;
+
 static bool try_saved_wifi(archery_key_t key) {
     if (key != ARCHERY_KEY_OK || s_flow.page != ARCHERY_PAGE_WIFI ||
         s_flow.wifi_mode != 1 || s_flow.wifi_row >= s_flow.wifi_ap_count) {
@@ -229,6 +234,10 @@ static bool try_saved_wifi(archery_key_t key) {
     s_flow.wifi_row = 0;
     const esp_err_t err = archery_wifi_connect(s_wifi_view.ssid[row], pass);
     ESP_LOGI(TAG, "saved wifi connect err=%d", (int)err);
+    if (err == ESP_OK) {
+        s_saved_pending = true;
+        s_saved_row = row;
+    }
     redraw();
     return true;
 }
@@ -289,6 +298,27 @@ static void password_repeat_poll(void) {
 
 static void handle_wifi_event(void) {
     sync_wifi_flow();
+    if (s_wifi_view.state == ARCHERY_WIFI_CONNECTED) archery_wifi_commit_credentials();
+    if (s_saved_pending) {
+        if (s_wifi_view.state == ARCHERY_WIFI_FAILED) {
+            s_saved_pending = false;
+            s_flow.page = ARCHERY_PAGE_WIFI_PASSWORD;
+            s_flow.wifi_mode = 1;
+            s_flow.wifi_target = s_saved_row;
+            s_flow.wifi_pw_pos = 0;
+            s_flow.wifi_pw_len = 0;
+            memset(s_flow.wifi_password, 0, sizeof(s_flow.wifi_password));
+            archery_voice_set_status("密码错误，请重新输入");
+            snprintf(s_wifi_view.message, sizeof(s_wifi_view.message), "密码错误，请重新输入");
+        } else if (s_wifi_view.state == ARCHERY_WIFI_CONNECTED) {
+            s_saved_pending = false;
+        }
+    }
+    if (!s_saved_pending && s_wifi_view.state == ARCHERY_WIFI_FAILED &&
+        s_flow.page == ARCHERY_PAGE_WIFI_PASSWORD) {
+        s_flow.page = ARCHERY_PAGE_WIFI;
+        s_flow.wifi_mode = 2;  // 显示连接失败结果，确定后回扫描
+    }
     uint32_t seconds = 0;
     if (archery_wifi_take_time(&seconds)) {
         clock_set_to(seconds);
@@ -405,6 +435,12 @@ static void handle_timer_tick(void) {
     } else {
         redraw();
     }
+}
+
+void archery_app_voice_verified(bool ok) {
+    if (!s_queue) return;
+    const app_message_t message = {.type = ok ? APP_MSG_VOICE_OK : APP_MSG_VOICE_FAIL};
+    (void)xQueueSend(s_queue, &message, 0);
 }
 
 void archery_app_refresh(void) {
@@ -734,6 +770,25 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
             s_ptt_used = false;  // 这次按键已经用于语音，吞掉单击
             return;
         }
+        if (event == BSP_BTN_DOUBLE && s_flow.page == ARCHERY_PAGE_WIFI_PASSWORD &&
+            archery_flow_button_is_ok(physical, s_rotate_keys)) {
+            const uint8_t index = s_flow.wifi_target;
+            if (s_flow.wifi_pw_len == 0 &&
+                (s_flow.wifi_secure_mask & (1u << index))) {
+                return;  // 加密网络还没输密码，忽略双击
+            }
+            if (index < ARCHERY_WIFI_AP_MAX) {
+                char ssid[ARCHERY_WIFI_SSID_MAX];
+                strncpy(ssid, s_wifi_view.ssid[index], sizeof(ssid) - 1);
+                ssid[sizeof(ssid) - 1] = '\0';
+                s_flow.page = ARCHERY_PAGE_WIFI;
+                s_flow.wifi_mode = 2;
+                s_flow.wifi_row = 0;
+                (void)archery_wifi_connect(ssid, s_flow.wifi_password);
+                archery_app_refresh();
+            }
+            return;
+        }
         if (event == BSP_BTN_DOUBLE && s_flow.page == ARCHERY_PAGE_HISTORY &&
             archery_flow_button_is_ok(physical, s_rotate_keys)) {
             const app_message_t filter = {.type = APP_MSG_HISTORY_FILTER};
@@ -887,6 +942,10 @@ static void apply_voice_result(const archery_voice_result_t *result) {
     }
 
     if (failure) {
+        const char *detail = archery_voice_status();
+        if (detail && (strstr(detail, "没听清") || strstr(detail, "数量对不上"))) {
+            failure = detail;
+        }
         archery_voice_set_status(failure);
     } else {
         memcpy(s_flow.counts[face], counts, slots);
@@ -950,6 +1009,12 @@ static void worker_task(void *argument) {
             } else if (message.type == APP_MSG_VOICE_STOP) {
                 archery_voice_stop();
             } else if (message.type == APP_MSG_REFRESH) {
+                redraw();
+            } else if (message.type == APP_MSG_VOICE_OK) {
+                archery_voice_play_saved();
+                redraw();
+            } else if (message.type == APP_MSG_VOICE_FAIL) {
+                archery_voice_play_config_failed();
                 redraw();
             } else if (message.type == APP_MSG_HISTORY_FILTER) {
                 if (archery_flow_history_cycle_filter(&s_flow) ==

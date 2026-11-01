@@ -64,6 +64,7 @@ void archery_voice_preview_beep(void);
 void archery_voice_play_saved(void);
 // 提前打开音频，避免 TLS 握手后再初始化失败。
 void archery_voice_prepare_audio(void);
+void archery_voice_reopen_audio(void);
 // 配置失败提示音（sol -> do）。
 void archery_voice_play_config_failed(void);
 // 比赛计时剩 30 秒的特殊提示音（三声高频）。

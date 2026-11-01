@@ -82,6 +82,8 @@ static bool load_credentials(char *ssid, size_t ssid_size, char *pass, size_t pa
 static bool s_save_enabled = true;
 // 用户主动断开后不再自动重连；下次手动连接时恢复。
 static bool s_auto_reconnect = true;
+static char s_connect_pass[ARCHERY_WIFI_PASS_SIZE];
+static bool s_save_pending;
 
 void archery_wifi_set_save_enabled(bool enabled) { s_save_enabled = enabled; }
 bool archery_wifi_save_enabled(void) { return s_save_enabled; }
@@ -133,6 +135,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
         s_view.ip[sizeof(s_view.ip) - 1] = '\0';
         s_view.sta_connected = true;
         s_view.state = ARCHERY_WIFI_CONNECTED;
+        s_save_pending = true;
         set_message("已连接，可立即对时");
         notify();
         ESP_LOGI(TAG, "已获取 IP: %s", s_ip);
@@ -143,7 +146,11 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
 // 阻塞扫描并写入视图；返回扫描到的网络数。
 static uint8_t run_scan(void) {
     wifi_scan_config_t config = {0};
-    const esp_err_t err = esp_wifi_scan_start(&config, true);
+    esp_err_t err = esp_wifi_scan_start(&config, true);
+    for (int retry = 0; err != ESP_OK && retry < 3; retry++) {
+        vTaskDelay(pdMS_TO_TICKS(300));
+        err = esp_wifi_scan_start(&config, true);
+    }
     uint16_t count = 0;
     wifi_ap_record_t records[ARCHERY_WIFI_AP_MAX];
     if (err == ESP_OK) {
@@ -184,6 +191,7 @@ static void scan_task(void *arg) {
 esp_err_t archery_wifi_scan(void) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     if (s_view.state == ARCHERY_WIFI_SCANNING) return ESP_OK;
+    if (s_view.state == ARCHERY_WIFI_CONNECTING) (void)esp_wifi_disconnect();
     if (xTaskCreate(scan_task, "wifi_scan", 4096, NULL, 4, NULL) != pdPASS) {
         return ESP_ERR_NO_MEM;
     }
@@ -194,10 +202,8 @@ esp_err_t archery_wifi_scan(void) {
 esp_err_t archery_wifi_connect(const char *ssid, const char *password) {
     if (!s_inited || !ssid || !ssid[0]) return ESP_ERR_INVALID_ARG;
     s_auto_reconnect = true;
-    if (s_save_enabled) {
-        save_credentials(ssid, password);
-        archery_wifi_store_remember(ssid, password);
-    }
+    strncpy(s_connect_pass, password ? password : "", sizeof(s_connect_pass) - 1);
+    s_connect_pass[sizeof(s_connect_pass) - 1] = '\0';
 
     if (s_provisioning) {
         archery_wifi_stop_provisioning();
@@ -272,6 +278,15 @@ esp_err_t archery_wifi_disconnect(void) {
     set_message("已断开");
     notify();
     return ESP_OK;
+}
+
+void archery_wifi_commit_credentials(void) {
+    if (!s_save_pending) return;
+    s_save_pending = false;
+    if (s_save_enabled) {
+        save_credentials(s_sta_ssid, s_connect_pass);
+        archery_wifi_store_remember(s_sta_ssid, s_connect_pass);
+    }
 }
 
 bool archery_wifi_connected(void) { return s_connected; }
@@ -351,10 +366,12 @@ static const char *PROV_HTML =
     " spellcheck=false autocomplete=off>"
     "<input id=pass type=password placeholder='Wi-Fi 密码' autocapitalize=none"
     " autocorrect=off spellcheck=false autocomplete=off>"
+    "<button type=button onclick=\"toggleVisible('pass',this)\">显示</button>"
     "<button onclick=go()>连接</button>"
     "<div class=muted style='margin-top:18px'>豆包 API Key（新版控制台）</div>"
     "<input id=apikey type=password placeholder='API Key' autocapitalize=none"
     " autocorrect=off spellcheck=false autocomplete=off>"
+    "<button type=button onclick=\"toggleVisible('apikey',this)\">显示</button>"
     "<button onclick=saveApiKey()>保存 API Key</button>"
     "<div class=muted style='margin-top:18px'>首页名称（1-8 个字符）</div>"
     "<input id=name maxlength=8 placeholder='射箭计分宝' autocapitalize=none"
@@ -364,6 +381,7 @@ static const char *PROV_HTML =
     "let ssid=document.getElementById('ssid'),pass=document.getElementById('pass'),"
     "nameInput=document.getElementById('name'),msg=document.getElementById('msg');"
     "fetch('/device-name').then(r=>r.text()).then(t=>{nameInput.value=t});"
+    "function toggleVisible(id,btn){const e=document.getElementById(id);const show=e.type==='password';e.type=show?'text':'password';btn.textContent=show?'隐藏':'显示';}"
     "function saveName(){fetch('/device-name',{method:'POST',"
     "headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'name='+encodeURIComponent(nameInput.value)})"
     ".then(r=>r.text()).then(t=>{msg.textContent=t})}"
@@ -539,13 +557,14 @@ static void verify_voice_task(void *arg) {
     ESP_LOGI("archery_wifi", "voice verify result=%d http=%d", (int)ok, code);
     if (ok) {
         archery_voice_set_status("语音配置成功");
-        archery_voice_play_saved();
+        archery_app_voice_verified(true);
     } else if (code == 401 || code == 403) {
         archery_voice_set_status("语音 Key 无效");
-        archery_voice_play_config_failed();
+        archery_app_voice_verified(false);
     } else {
         // 配网页常在热点模式，设备没有外网，不能据此判定 Key 错误。
-        archery_voice_set_status("已保存，联网后验证");
+        archery_voice_set_status("保存成功，但网络不可用");
+        archery_app_voice_verified(false);
     }
     archery_app_refresh();
     s_voice_verifying = false;

@@ -262,6 +262,20 @@ static void clock_adjust(archery_datetime_t *dt, uint8_t field, int delta) {
 
 // 联网页：菜单（扫描 / 手机扫码 / 立即对时 / 断开 / 返回）或扫描结果列表。
 static archery_act_t handle_wifi(archery_flow_t *flow, archery_key_t key) {
+    if (flow->wifi_mode == 2) {
+        if (key == ARCHERY_KEY_OK) {
+            flow->wifi_mode = 1;
+            flow->wifi_row = 0;
+            return ARCHERY_ACT_WIFI_SCAN;
+        }
+        if (key == ARCHERY_KEY_OK_LONG) {
+            flow->wifi_mode = 0;
+            flow->wifi_row = 0;
+            flow->page = ARCHERY_PAGE_HOME;
+            return ARCHERY_ACT_WIFI_LEAVE;
+        }
+        return ARCHERY_ACT_NONE;
+    }
     if (flow->wifi_mode == 0) {
         switch (key) {
         case ARCHERY_KEY_UP:
@@ -313,16 +327,13 @@ static archery_act_t handle_wifi(archery_flow_t *flow, archery_key_t key) {
         break;
     case ARCHERY_KEY_OK:
         if (flow->wifi_row < flow->wifi_ap_count) {
-            if (flow->wifi_secure_mask & (1u << flow->wifi_row)) {
-                // 加密网络：在本机输入密码。
-                flow->wifi_target = flow->wifi_row;
-                memset(flow->wifi_password, 0, sizeof(flow->wifi_password));
-                flow->wifi_pw_pos = 0;
-                flow->wifi_pw_len = 0;
-                flow->page = ARCHERY_PAGE_WIFI_PASSWORD;
-                return ARCHERY_ACT_NONE;
-            }
-            return ARCHERY_ACT_WIFI_CONNECT;
+            // 先进入密码页；开放网络可在密码页直接双击确定连接。
+            flow->wifi_target = flow->wifi_row;
+            memset(flow->wifi_password, 0, sizeof(flow->wifi_password));
+            flow->wifi_pw_pos = 0;
+            flow->wifi_pw_len = 0;
+            flow->page = ARCHERY_PAGE_WIFI_PASSWORD;
+            return ARCHERY_ACT_NONE;
         }
         flow->wifi_mode = 0;
         flow->wifi_row = 0;
@@ -353,12 +364,7 @@ static archery_act_t handle_wifi_password(archery_flow_t *flow, archery_key_t ke
         break;
     }
     case ARCHERY_KEY_OK:
-        if (flow->wifi_pw_pos < flow->wifi_pw_len) {
-            flow->wifi_pw_pos++;
-        } else if (flow->wifi_pw_len > 0) {
-            flow->wifi_password[flow->wifi_pw_len] = '\0';
-            return ARCHERY_ACT_WIFI_CONNECT_PASSWORD;
-        }
+        if (flow->wifi_pw_pos < 64u) flow->wifi_pw_pos++;
         break;
     case ARCHERY_KEY_OK_LONG:
         if (flow->wifi_pw_pos > 0) {
@@ -368,6 +374,8 @@ static archery_act_t handle_wifi_password(archery_flow_t *flow, archery_key_t ke
         } else {
             flow->page = ARCHERY_PAGE_WIFI;
             flow->wifi_mode = 1;
+            flow->wifi_row = 0;
+            return ARCHERY_ACT_WIFI_SCAN;
         }
         break;
     }
