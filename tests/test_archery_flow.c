@@ -661,15 +661,13 @@ static void test_wifi_page(void) {
     assert(flow.wifi_row == 3);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_WIFI_STOP);
 
-    // 返回行：离开并回主页
+    // 第 5 行是验证语音，不再直接离开
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.wifi_row == 4);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_WIFI_LEAVE);
-    assert(flow.page == ARCHERY_PAGE_HOME);
-
-    // 长按也能离开
-    press(&flow, ARCHERY_KEY_OK);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_VOICE_VERIFY);
     assert(flow.page == ARCHERY_PAGE_WIFI);
+
+    // 长按确定离开
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK_LONG) == ARCHERY_ACT_WIFI_LEAVE);
     assert(flow.page == ARCHERY_PAGE_HOME);
 
