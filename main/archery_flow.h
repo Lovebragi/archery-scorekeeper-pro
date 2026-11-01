@@ -27,6 +27,7 @@ typedef enum {
     ARCHERY_PAGE_DIAG,
     ARCHERY_PAGE_DIAG_LOG,
     ARCHERY_PAGE_TIMER,
+    ARCHERY_PAGE_AUTO_CHECK,
 } archery_page_t;
 
 // 主页入口数：开始训练 / 历史记录 / 设置 / 联网。
@@ -79,6 +80,7 @@ typedef enum {
     ARCHERY_ACT_WIFI_SYNC_TIME,    // 立即用 NTP 对时
     ARCHERY_ACT_WIFI_STOP,         // 断开/停止配网
     ARCHERY_ACT_WIFI_LEAVE,
+    ARCHERY_ACT_AUTO_CHECK,
     ARCHERY_ACT_VOICE_VERIFY,        // 离开联网页：停止配网热点
     ARCHERY_ACT_WIFI_CONNECT_PASSWORD,  // 用设备上输入的密码连接（flow->wifi_password）
     ARCHERY_ACT_TIMER_START,            // 进入计时页：上层启动 1 秒 + 10 秒准备 + 射击倒计时
@@ -120,6 +122,8 @@ typedef struct {
     uint8_t wifi_mode;      // 0 = 菜单, 1 = 扫描结果列表
     bool wifi_provisioning; // 配网热点是否正在运行（由上层同步，决定"确定"是开还是停）
     uint8_t wifi_ap_count;  // 扫描到的网络数（列表末行是"返回"）
+    uint8_t auto_check_ok;    // 自动训练检测结果
+    uint8_t auto_check_done;
     uint8_t wifi_secure_mask;  // 扫描结果里哪些是加密网络（bit0 = 第 1 个）
     uint8_t wifi_target;    // 正在输入密码的网络下标
     char wifi_password[65]; // 设备上输入的密码
@@ -160,6 +164,7 @@ void archery_flow_set_clock(archery_flow_t *flow, uint32_t now, bool time_set);
 // 扫描结果条数由上层同步，列表光标会随之钳制。
 void archery_flow_set_wifi_scan(archery_flow_t *flow, uint8_t ap_count);
 void archery_flow_set_wifi_security(archery_flow_t *flow, uint8_t secure_mask);
+void archery_flow_enter_setup(archery_flow_t *flow);
 // 配网热点开关状态由上层同步；菜单第 2 行在配网中再按"确定"表示停止配网。
 void archery_flow_set_wifi_provisioning(archery_flow_t *flow, bool active);
 

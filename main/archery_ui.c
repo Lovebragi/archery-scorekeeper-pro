@@ -821,7 +821,7 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
     static const char *row_names[] = {"靶子类型", "屏幕方向", "屏幕亮度",
                                       "息屏时间", "记录内十", "每组计时",
                                       "倒数十秒语音", "语音录靶", "滚动录入",
-                                      "提示音量", "保存Wi-Fi密码"};
+                                      "提示音量", "保存Wi-Fi密码", "自动训练模式"};
     char value[24];
     const uint8_t visible = 6;
     uint8_t offset = flow->settings_row >= visible ? (uint8_t)(flow->settings_row - visible + 1u) : 0u;
@@ -877,6 +877,9 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
         } else if (row == 10) {
             snprintf(value, sizeof(value), "%s",
                      flow->settings.wifi_save ? "开" : "关");
+        } else if (row == 11) {
+            snprintf(value, sizeof(value), "%s",
+                     flow->settings.auto_mode ? "开" : "关");
         }
         lv_obj_t *number = make_label(card, value, ARCHERY_FONT_BODY,
                                       selected ? C_GOLD : C_TEXT);
@@ -884,6 +887,22 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
     }
     add_hint(scr, "上/下 选择 · 确定 循环", 262);
     add_hint(scr, "长按确定 保存返回", 288);
+}
+
+static void render_auto_check(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "训练前检测");
+    if (!flow->auto_check_done) {
+        centered_label(scr, "正在检测语音服务…", ARCHERY_FONT_BODY, C_MUTED, 110);
+    } else if (flow->auto_check_ok) {
+        centered_label(scr, "语音可用", ARCHERY_FONT_TITLE, C_GOLD, 96);
+        centered_label(scr, "已开启语音录靶，关闭滚动录入",
+                       ARCHERY_FONT_BODY, C_TEXT, 140);
+    } else {
+        centered_label(scr, "语音不可用", ARCHERY_FONT_TITLE, C_TEXT, 96);
+        centered_label(scr, "已关闭语音录靶，开启滚动录入",
+                       ARCHERY_FONT_BODY, C_TEXT, 140);
+    }
+    add_hint(scr, "确定 立即开始 · 3 秒后自动进入", 284);
 }
 
 // 手动对时：年 / 月 / 日 / 时 / 分。设备没有 RTC 电池，断电后从上次时间继续。
@@ -1184,6 +1203,7 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_CLEAR_CONFIRM: render_confirm(scr, flow, history, false); break;
     case ARCHERY_PAGE_ABORT_CONFIRM: render_confirm(scr, flow, history, true); break;
     case ARCHERY_PAGE_SETTINGS: render_settings(scr, flow); break;
+    case ARCHERY_PAGE_AUTO_CHECK: render_auto_check(scr, flow); break;
     case ARCHERY_PAGE_CLOCK: render_clock(scr, flow); break;
     case ARCHERY_PAGE_WIFI: render_wifi(scr, flow); break;
     case ARCHERY_PAGE_WIFI_PASSWORD: render_wifi_password(scr, flow); break;

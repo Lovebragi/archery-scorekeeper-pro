@@ -449,6 +449,44 @@ void archery_app_refresh(void) {
     (void)xQueueSend(s_queue, &message, 0);
 }
 
+static volatile bool s_auto_checking;
+static int64_t s_auto_deadline_us;
+
+static void auto_check_task(void *arg) {
+    (void)arg;
+    bool ok = archery_wifi_connected() && archery_voice_has_credentials();
+    if (ok) ok = archery_voice_test_credentials();
+    s_flow.settings.voice_enabled = ok ? 1u : 0u;
+    s_flow.settings.roll_entry = ok ? 0u : 1u;
+    apply_settings(&s_flow.settings);
+    (void)archery_settings_save(&s_flow.settings);
+    s_flow.auto_check_ok = ok ? 1u : 0u;
+    s_flow.auto_check_done = 1;
+    s_auto_deadline_us = esp_timer_get_time() + 3000000;
+    archery_voice_set_status(ok ? "自动检测：语音可用" : "自动检测：语音不可用");
+    s_auto_checking = false;
+    archery_app_refresh();
+    vTaskDelete(NULL);
+}
+
+static void auto_check_start(void) {
+    if (s_auto_checking) return;
+    s_auto_checking = true;
+    s_flow.auto_check_done = 0;
+    s_auto_deadline_us = 0;
+    archery_voice_set_status("正在检测语音服务");
+    if (xTaskCreate(auto_check_task, "auto_check", 8192, NULL, 3, NULL) != pdPASS) {
+        s_auto_checking = false;
+        s_flow.auto_check_ok = 0;
+        s_flow.auto_check_done = 1;
+        s_flow.settings.voice_enabled = 0;
+        s_flow.settings.roll_entry = 1;
+        apply_settings(&s_flow.settings);
+        s_auto_deadline_us = esp_timer_get_time() + 3000000;
+    }
+    redraw();
+}
+
 static void handle_key(archery_key_t key) {
     const archery_act_t action = archery_flow_handle(&s_flow, key);
     switch (action) {
@@ -554,6 +592,9 @@ static void handle_key(archery_key_t key) {
         break;
     case ARCHERY_ACT_VOICE_VERIFY:
         archery_wifi_verify_voice_async();
+        break;
+    case ARCHERY_ACT_AUTO_CHECK:
+        auto_check_start();
         break;
     case ARCHERY_ACT_NONE:
         break;
@@ -1046,6 +1087,12 @@ static void worker_task(void *argument) {
             s_next_clock_save_us = now + (int64_t)300 * 1000000;
         }
         // 录入页若发现 Wi-Fi 掉了（浅睡、路由器重启），自动重连，避免语音前还要手动连。
+        if (s_flow.page == ARCHERY_PAGE_AUTO_CHECK && s_flow.auto_check_done &&
+            s_auto_deadline_us > 0 && now >= s_auto_deadline_us) {
+            s_auto_deadline_us = 0;
+            archery_flow_enter_setup(&s_flow);
+            redraw();
+        }
         if (s_flow.page == ARCHERY_PAGE_ENTRY && !archery_wifi_connected() &&
             now >= s_next_wifi_retry_us) {
             (void)archery_wifi_reconnect();

@@ -391,6 +391,7 @@
   35813,
   35814,
   35821,
+  35823,
   35828,
   35831,
   35835,
@@ -422,9 +423,11 @@
   37325,
   37327,
   38145,
+  38169,
   38190,
   38271,
   38376,
+  38381,
   38386,
   38388,
   38431,
@@ -4290,8 +4293,18 @@
    "adv_w": 256
   },
   {
-   "codepoint": 35828,
+   "codepoint": 35823,
    "glyph": 385,
+   "sha256": "9accd956795db3df73a3c32082f8ddd59c906ddf602e07e126f74aba18627a1a",
+   "box_w": 16,
+   "box_h": 16,
+   "ofs_x": 0,
+   "ofs_y": -2,
+   "adv_w": 256
+  },
+  {
+   "codepoint": 35828,
+   "glyph": 386,
    "sha256": "c8ffc93c0d81139d9108aa26840b861b4384f707aecfba5f031c6465337e0fc7",
    "box_w": 16,
    "box_h": 16,
@@ -4301,7 +4314,7 @@
   },
   {
    "codepoint": 35831,
-   "glyph": 386,
+   "glyph": 387,
    "sha256": "f85e9a96bd53a02a7780c595b3087a93bd0fd4af8c6d5e93c403ccac7ada4c7a",
    "box_w": 16,
    "box_h": 14,
@@ -4311,7 +4324,7 @@
   },
   {
    "codepoint": 35835,
-   "glyph": 387,
+   "glyph": 388,
    "sha256": "7ff25b46be144411765c7b522a4106cda0acc67639d8ebc407e694040a0ba280",
    "box_w": 16,
    "box_h": 15,
@@ -4321,7 +4334,7 @@
   },
   {
    "codepoint": 35843,
-   "glyph": 388,
+   "glyph": 389,
    "sha256": "2704c5e532d3a774af47d86ff285e17edb6a0d5f88321848652b2b5661ff4384",
    "box_w": 16,
    "box_h": 16,
@@ -4331,7 +4344,7 @@
   },
   {
    "codepoint": 35910,
-   "glyph": 389,
+   "glyph": 390,
    "sha256": "dfe2c03212cc341f54da76305e84901131042cdf73ba6258b00c8ff7a1b9a492",
    "box_w": 16,
    "box_h": 14,
@@ -4341,7 +4354,7 @@
   },
   {
    "codepoint": 36133,
-   "glyph": 390,
+   "glyph": 391,
    "sha256": "8f8f22be710bc1a2de45fdd39fae096b55366e786368ce2d0f207c47a3f46628",
    "box_w": 16,
    "box_h": 15,
@@ -4351,7 +4364,7 @@
   },
   {
    "codepoint": 36187,
-   "glyph": 391,
+   "glyph": 392,
    "sha256": "41b5d116f1e6d7e2c1ebd66870dbdce9baad207bcbf49fe0cda267d56e95b4df",
    "box_w": 16,
    "box_h": 16,
@@ -4361,7 +4374,7 @@
   },
   {
    "codepoint": 36229,
-   "glyph": 392,
+   "glyph": 393,
    "sha256": "69032c96a401b15e2e113273a4af3bb649b186c74672da77809ca8f1ac7855e2",
    "box_w": 16,
    "box_h": 15,
@@ -4371,7 +4384,7 @@
   },
   {
    "codepoint": 36339,
-   "glyph": 393,
+   "glyph": 394,
    "sha256": "b975f35199d506aaf91edbc0b1efb8ab8bd4b4ee18ed96d0ccf3ba78c7b01207",
    "box_w": 16,
    "box_h": 15,
@@ -4381,7 +4394,7 @@
   },
   {
    "codepoint": 36716,
-   "glyph": 394,
+   "glyph": 395,
    "sha256": "d4a19d227c38cc8024c27858fbe5c76ba201ad02d573ee361be52b8da04e6cf0",
    "box_w": 16,
    "box_h": 16,
@@ -4391,7 +4404,7 @@
   },
   {
    "codepoint": 36719,
-   "glyph": 395,
+   "glyph": 396,
    "sha256": "031dc236d3f91961e4db5cfac91cd972832a0243ddfdc03a85205a643bba7173",
    "box_w": 16,
    "box_h": 16,
@@ -4401,7 +4414,7 @@
   },
   {
    "codepoint": 36733,
-   "glyph": 396,
+   "glyph": 397,
    "sha256": "3d3fccf0ed4adb57e6eda38ea6d31e04240d6f2393a39c7c0f92ae701fe1a6ee",
    "box_w": 16,
    "box_h": 15,
@@ -4411,7 +4424,7 @@
   },
   {
    "codepoint": 36755,
-   "glyph": 397,
+   "glyph": 398,
    "sha256": "f9e7a6e96076e5ec13d597d3abf52c5af81b64ae896aeee796ee2c3605153eca",
    "box_w": 16,
    "box_h": 16,
@@ -4421,7 +4434,7 @@
   },
   {
    "codepoint": 36807,
-   "glyph": 398,
+   "glyph": 399,
    "sha256": "1564b6fae1372449f390bb4e03470a6b7eba57aaaadac2462a7f31a770c796a7",
    "box_w": 16,
    "box_h": 15,
@@ -4431,7 +4444,7 @@
   },
   {
    "codepoint": 36816,
-   "glyph": 399,
+   "glyph": 400,
    "sha256": "14daa3bb923d55ab6706e107d1465fa38f5a7e7a96453f3930471db980dfc75a",
    "box_w": 16,
    "box_h": 16,
@@ -4441,7 +4454,7 @@
   },
   {
    "codepoint": 36817,
-   "glyph": 400,
+   "glyph": 401,
    "sha256": "d8fd1db7d60a7efbe5015e9c547f622c16323c2f96b7e7fa1a45bd04150e7566",
    "box_w": 16,
    "box_h": 16,
@@ -4451,7 +4464,7 @@
   },
   {
    "codepoint": 36820,
-   "glyph": 401,
+   "glyph": 402,
    "sha256": "8c73a960a4191c19f725629aa6472784af4958bf9b42b991d99a630314ce96e0",
    "box_w": 16,
    "box_h": 15,
@@ -4461,7 +4474,7 @@
   },
   {
    "codepoint": 36824,
-   "glyph": 402,
+   "glyph": 403,
    "sha256": "85e266639d45758e49f71260280a600cfd18b8512b54b31f383e43e822745cdd",
    "box_w": 16,
    "box_h": 15,
@@ -4471,7 +4484,7 @@
   },
   {
    "codepoint": 36827,
-   "glyph": 403,
+   "glyph": 404,
    "sha256": "570529fea1519384453cbcdb96af1bc12cd42a8ad2dfdba0aff88a11840bf39a",
    "box_w": 16,
    "box_h": 15,
@@ -4481,7 +4494,7 @@
   },
   {
    "codepoint": 36830,
-   "glyph": 404,
+   "glyph": 405,
    "sha256": "39d946a837e5c48fb106661a6b0467b461cbe4987773d05b6267dfe1efcba671",
    "box_w": 16,
    "box_h": 16,
@@ -4491,7 +4504,7 @@
   },
   {
    "codepoint": 36865,
-   "glyph": 405,
+   "glyph": 406,
    "sha256": "6ff691af0971690fb695cb0944ef42a66c6648f0e0c4fc7656b7e4eadcdb4c91",
    "box_w": 16,
    "box_h": 16,
@@ -4501,7 +4514,7 @@
   },
   {
    "codepoint": 36873,
-   "glyph": 406,
+   "glyph": 407,
    "sha256": "838cf0c69361daa0ba6c7923b4d8612fa0b34576985e3e6d482e57fff81bba08",
    "box_w": 16,
    "box_h": 15,
@@ -4511,7 +4524,7 @@
   },
   {
    "codepoint": 36880,
-   "glyph": 407,
+   "glyph": 408,
    "sha256": "fbfcbe0a7a61f6abedc162c38a460bbbb137a02db275131532bf023f888d918c",
    "box_w": 16,
    "box_h": 16,
@@ -4521,7 +4534,7 @@
   },
   {
    "codepoint": 36890,
-   "glyph": 408,
+   "glyph": 409,
    "sha256": "66082c770aede7229af7956f6b810d1aecf7b4bba6e3ad8abdbf189335ea6781",
    "box_w": 16,
    "box_h": 16,
@@ -4531,7 +4544,7 @@
   },
   {
    "codepoint": 36895,
-   "glyph": 409,
+   "glyph": 410,
    "sha256": "c21b36740fa01ec7e7fd83818ccf248f7fed389a3ca077a8be1c98cc7c5a68ee",
    "box_w": 16,
    "box_h": 15,
@@ -4541,7 +4554,7 @@
   },
   {
    "codepoint": 37096,
-   "glyph": 410,
+   "glyph": 411,
    "sha256": "1c404ee953fae0a78449958b0b16305494cdbb6b86c1365d100ebe41caf3a14f",
    "box_w": 16,
    "box_h": 15,
@@ -4551,7 +4564,7 @@
   },
   {
    "codepoint": 37197,
-   "glyph": 411,
+   "glyph": 412,
    "sha256": "33c31037f01c2b455ca5a86d284567ddbf8a32aaf6cbf7725dbe9138c77042f2",
    "box_w": 16,
    "box_h": 16,
@@ -4561,7 +4574,7 @@
   },
   {
    "codepoint": 37266,
-   "glyph": 412,
+   "glyph": 413,
    "sha256": "d91375b417f581488fc86fada6531d267497ccb90c89027d2bc6b5e25615f2df",
    "box_w": 16,
    "box_h": 15,
@@ -4571,7 +4584,7 @@
   },
   {
    "codepoint": 37325,
-   "glyph": 413,
+   "glyph": 414,
    "sha256": "6023dffcce1018d5e334f665a8495b9bc86af8a7c935f3c67687c242b11e10f3",
    "box_w": 16,
    "box_h": 16,
@@ -4581,7 +4594,7 @@
   },
   {
    "codepoint": 37327,
-   "glyph": 414,
+   "glyph": 415,
    "sha256": "142bc514311adb884dbbe2f4679885616e56ecbdf0f9aa3fae4dfc3ae80f3005",
    "box_w": 16,
    "box_h": 14,
@@ -4591,7 +4604,7 @@
   },
   {
    "codepoint": 38145,
-   "glyph": 415,
+   "glyph": 416,
    "sha256": "bb06c9e43fd3ecb178e60cea0b146262d9ba0e3fff37f0123acaae7dd038c1d3",
    "box_w": 16,
    "box_h": 16,
@@ -4600,8 +4613,18 @@
    "adv_w": 256
   },
   {
+   "codepoint": 38169,
+   "glyph": 417,
+   "sha256": "93e4d7373b2ee74e6f17a5aa44b1a8ea1aa9fc2e41b4505238512102f4093cfa",
+   "box_w": 16,
+   "box_h": 15,
+   "ofs_x": 0,
+   "ofs_y": -2,
+   "adv_w": 256
+  },
+  {
    "codepoint": 38190,
-   "glyph": 416,
+   "glyph": 418,
    "sha256": "00b4bc8374a0faf77453b7e647bba2878a4c6876b038a472d25d2e66643762d8",
    "box_w": 16,
    "box_h": 16,
@@ -4611,7 +4634,7 @@
   },
   {
    "codepoint": 38271,
-   "glyph": 417,
+   "glyph": 419,
    "sha256": "d2998191329ee52e63036bc65e85593cbefae563e01fc7a60bcb889eb168c9c9",
    "box_w": 16,
    "box_h": 15,
@@ -4621,7 +4644,7 @@
   },
   {
    "codepoint": 38376,
-   "glyph": 418,
+   "glyph": 420,
    "sha256": "d88d86f63c848e67e651b570bbb014789627551ad079360e5e05b8285607bb9b",
    "box_w": 16,
    "box_h": 16,
@@ -4630,8 +4653,18 @@
    "adv_w": 256
   },
   {
+   "codepoint": 38381,
+   "glyph": 421,
+   "sha256": "4811ff53e96c6bc93a24c9a10cc82479a9036d3d08e2ef91e6c8505c466ffe27",
+   "box_w": 16,
+   "box_h": 15,
+   "ofs_x": 0,
+   "ofs_y": -1,
+   "adv_w": 256
+  },
+  {
    "codepoint": 38386,
-   "glyph": 419,
+   "glyph": 422,
    "sha256": "f24ef7eabb86a9c0686c6ad1818de12f36cdf29d67e2f7a1bbb9a70642aa9970",
    "box_w": 16,
    "box_h": 16,
@@ -4641,7 +4674,7 @@
   },
   {
    "codepoint": 38388,
-   "glyph": 420,
+   "glyph": 423,
    "sha256": "152c659bbb5dfae0a7868b20f53ff17c7b23dea3778533162021d5f908ffc6a8",
    "box_w": 16,
    "box_h": 16,
@@ -4651,7 +4684,7 @@
   },
   {
    "codepoint": 38431,
-   "glyph": 421,
+   "glyph": 424,
    "sha256": "fc7e46359fb7e28f806ceab5a470f9b37b9819f037871d0e79413e4291b8228e",
    "box_w": 16,
    "box_h": 16,
@@ -4661,7 +4694,7 @@
   },
   {
    "codepoint": 38450,
-   "glyph": 422,
+   "glyph": 425,
    "sha256": "4d7aa7e5758a90edcc0f74276aa48a02c3bad160be101e0ce43e090e823f0646",
    "box_w": 16,
    "box_h": 16,
@@ -4671,7 +4704,7 @@
   },
   {
    "codepoint": 38468,
-   "glyph": 423,
+   "glyph": 426,
    "sha256": "8872748180b58bd73f9be6e09a9c10ed555ad1b0f2a2f3628499f9344ab5c94a",
    "box_w": 16,
    "box_h": 16,
@@ -4681,7 +4714,7 @@
   },
   {
    "codepoint": 38500,
-   "glyph": 424,
+   "glyph": 427,
    "sha256": "2d7bd9bbf84fff2b81fc3d21060fca91a9b38116b6f070e1c509f0ac50476cd5",
    "box_w": 16,
    "box_h": 16,
@@ -4691,7 +4724,7 @@
   },
   {
    "codepoint": 38656,
-   "glyph": 425,
+   "glyph": 428,
    "sha256": "234f03afc41542cf9ad3ca06ba8c081ce40532d0b4683e5f065f212303a33646",
    "box_w": 16,
    "box_h": 15,
@@ -4701,7 +4734,7 @@
   },
   {
    "codepoint": 38754,
-   "glyph": 426,
+   "glyph": 429,
    "sha256": "1b206edc29b3ba2a98c81c09e0a9d88f08231052e59afbace28a4ba6b1654697",
    "box_w": 16,
    "box_h": 14,
@@ -4711,7 +4744,7 @@
   },
   {
    "codepoint": 38774,
-   "glyph": 427,
+   "glyph": 430,
    "sha256": "185067666845ed3750a092ec25b9e52bde58e256604dc699ce2dd53828e982ee",
    "box_w": 16,
    "box_h": 14,
@@ -4721,7 +4754,7 @@
   },
   {
    "codepoint": 38899,
-   "glyph": 428,
+   "glyph": 431,
    "sha256": "b2111e53164b1d91d7ba8bef34b78889525d02f5f413f5638ffc956eb8a7cbbc",
    "box_w": 16,
    "box_h": 16,
@@ -4731,7 +4764,7 @@
   },
   {
    "codepoint": 39029,
-   "glyph": 429,
+   "glyph": 432,
    "sha256": "18130b33fe2fd4a434796d2b88bfb254479add34a23fadf866823dc458fdc492",
    "box_w": 16,
    "box_h": 15,
@@ -4741,7 +4774,7 @@
   },
   {
    "codepoint": 39033,
-   "glyph": 430,
+   "glyph": 433,
    "sha256": "4f409f310799a3d69b093fb29945be209817772b128a183bf7a6baaa80a8f570",
    "box_w": 16,
    "box_h": 15,
@@ -4751,7 +4784,7 @@
   },
   {
    "codepoint": 39118,
-   "glyph": 431,
+   "glyph": 434,
    "sha256": "657ef4d8effdb28ebceb7a1e6e0eabba9bd1117ac88b71ff42b7f04bdff0cb5e",
    "box_w": 16,
    "box_h": 15,
@@ -4761,7 +4794,7 @@
   },
   {
    "codepoint": 39318,
-   "glyph": 432,
+   "glyph": 435,
    "sha256": "3fa59d6d32001d1402e5800107352567d32d78936aa597d9ed6a0fcc31d99e98",
    "box_w": 16,
    "box_h": 15,
@@ -4771,7 +4804,7 @@
   },
   {
    "codepoint": 39564,
-   "glyph": 433,
+   "glyph": 436,
    "sha256": "664a6a559c412a8b860d81c9f2c97140234dcf9311f528737deebcfffac4c9c3",
    "box_w": 16,
    "box_h": 16,
@@ -4781,7 +4814,7 @@
   },
   {
    "codepoint": 40614,
-   "glyph": 434,
+   "glyph": 437,
    "sha256": "3c6acce63262e31fb2ac682e08791a3c40d18e9b41de17f82d4bd5c701ed9716",
    "box_w": 16,
    "box_h": 15,
@@ -4791,7 +4824,7 @@
   },
   {
    "codepoint": 40664,
-   "glyph": 435,
+   "glyph": 438,
    "sha256": "32c052728c0afccbbdb907b084dcd4f4aa871a1145b452a68fffe57c00e80335",
    "box_w": 16,
    "box_h": 15,
@@ -4801,7 +4834,7 @@
   },
   {
    "codepoint": 65288,
-   "glyph": 436,
+   "glyph": 439,
    "sha256": "16b7cda1c86d7eb4f32b62b9bb825bef6a5c55d131ad37aa4a92fa8cb1df6515",
    "box_w": 16,
    "box_h": 16,
@@ -4811,7 +4844,7 @@
   },
   {
    "codepoint": 65289,
-   "glyph": 437,
+   "glyph": 440,
    "sha256": "8d007f94988d43b2ff25f69d738ec81f7739c9b5f16de0a814864c581309e06f",
    "box_w": 16,
    "box_h": 16,
@@ -4821,7 +4854,7 @@
   },
   {
    "codepoint": 65292,
-   "glyph": 438,
+   "glyph": 441,
    "sha256": "1f6518e32f1610d464ed75fdadf6dfcd4fa24f50c1bc2681ce940b11e5ec0037",
    "box_w": 16,
    "box_h": 6,
@@ -4831,7 +4864,7 @@
   },
   {
    "codepoint": 65306,
-   "glyph": 439,
+   "glyph": 442,
    "sha256": "70f11279066936c7fc213ccfde4870c0c58fc9e628fd44e8dc530382dac13ea7",
    "box_w": 16,
    "box_h": 12,
@@ -4841,7 +4874,7 @@
   },
   {
    "codepoint": 65311,
-   "glyph": 440,
+   "glyph": 443,
    "sha256": "df639543e58411dafdc7c21572630b67cfcb1dfb4aa4425731ec7f1e45808960",
    "box_w": 16,
    "box_h": 14,

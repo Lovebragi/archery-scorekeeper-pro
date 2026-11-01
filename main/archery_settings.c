@@ -4,7 +4,8 @@
 #include <string.h>
 
 #define SETTINGS_MAGIC 0x5Au
-#define SETTINGS_VERSION 9u
+#define SETTINGS_VERSION 10u
+#define SETTINGS_VERSION_V9 9u
 #define SETTINGS_VERSION_V8 8u
 #define SETTINGS_VERSION_V6 6u
 #define SETTINGS_VERSION_V7 7u
@@ -13,6 +14,7 @@
 #define SETTINGS_VERSION_V3 3u
 #define SETTINGS_VERSION_V2 2u
 #define SETTINGS_VERSION_V1 1u
+#define SETTINGS_CRC_BYTES_V10 15u
 #define SETTINGS_CRC_BYTES_V9 14u
 #define SETTINGS_CRC_BYTES_V8 13u
 #define SETTINGS_CRC_BYTES_V7 12u
@@ -59,6 +61,7 @@ void archery_settings_defaults(archery_settings_t *settings) {
     settings->timer_seconds = ARCHERY_SETTINGS_DEFAULT_TIMER;
     settings->countdown_voice = ARCHERY_SETTINGS_DEFAULT_COUNTDOWN_VOICE;
     settings->roll_entry = ARCHERY_SETTINGS_DEFAULT_ROLL_ENTRY;
+    settings->auto_mode = ARCHERY_SETTINGS_DEFAULT_AUTO_MODE;
 }
 
 uint8_t archery_settings_target_count(void) { return TARGET_COUNT; }
@@ -103,7 +106,7 @@ bool archery_settings_valid(const archery_settings_t *settings) {
            brightness_index(settings->brightness) >= 0 &&
            off_index(settings->off_seconds) >= 0 &&
            settings->record_x <= 1u && settings->voice_enabled <= 1u &&
-           settings->beep_volume < 6u && settings->wifi_save <= 1u && settings->roll_entry <= 1u &&
+           settings->beep_volume < 6u && settings->wifi_save <= 1u && settings->roll_entry <= 1u && settings->auto_mode <= 1u &&
            settings->countdown_voice <= 3u &&
            (settings->timer_seconds == 0u || settings->timer_seconds == 20u ||
             settings->timer_seconds == 30u || settings->timer_seconds == 40u);
@@ -193,6 +196,12 @@ bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delt
         settings->wifi_save = next;
         return true;
     }
+    if (row == 11) {
+        const uint8_t next = settings->auto_mode ? 0u : 1u;
+        if (next == settings->auto_mode) return false;
+        settings->auto_mode = next;
+        return true;
+    }
     return false;
 }
 
@@ -214,9 +223,10 @@ size_t archery_settings_encode(const archery_settings_t *settings,
     buffer[11] = settings->timer_seconds;
     buffer[12] = settings->countdown_voice;
     buffer[13] = settings->roll_entry;
-    const uint16_t crc = crc16_ccitt(buffer, SETTINGS_CRC_BYTES_V9);
-    buffer[14] = (uint8_t)(crc & 0xFFu);
-    buffer[15] = (uint8_t)(crc >> 8);
+    buffer[14] = settings->auto_mode;
+    const uint16_t crc = crc16_ccitt(buffer, SETTINGS_CRC_BYTES_V10);
+    buffer[15] = (uint8_t)(crc & 0xFFu);
+    buffer[16] = (uint8_t)(crc >> 8);
     return ARCHERY_SETTINGS_ENCODED_BYTES;
 }
 
@@ -288,6 +298,9 @@ bool archery_settings_decode(archery_settings_t *settings,
     case SETTINGS_VERSION_V8:
         if (length != ARCHERY_SETTINGS_ENCODED_BYTES_V8) return false;
         break;
+    case SETTINGS_VERSION_V9:
+        if (length != ARCHERY_SETTINGS_ENCODED_BYTES_V9) return false;
+        break;
     case SETTINGS_VERSION:
         if (length != ARCHERY_SETTINGS_ENCODED_BYTES) return false;
         break;
@@ -299,6 +312,21 @@ bool archery_settings_decode(archery_settings_t *settings,
     decoded.countdown_voice = ARCHERY_SETTINGS_DEFAULT_COUNTDOWN_VOICE;
     decoded.roll_entry = ARCHERY_SETTINGS_DEFAULT_ROLL_ENTRY;
     if (buffer[1] == SETTINGS_VERSION) {
+        const uint16_t expected = (uint16_t)(buffer[15] | ((uint16_t)buffer[16] << 8));
+        if (crc16_ccitt(buffer, SETTINGS_CRC_BYTES_V10) != expected) return false;
+        decoded.target = buffer[2];
+        decoded.rotate = buffer[3];
+        decoded.brightness = buffer[4];
+        decoded.off_seconds = (uint16_t)(buffer[5] | ((uint16_t)buffer[6] << 8));
+        decoded.record_x = buffer[7];
+        decoded.voice_enabled = buffer[8];
+        decoded.beep_volume = buffer[9];
+        decoded.wifi_save = buffer[10];
+        decoded.timer_seconds = buffer[11];
+        decoded.countdown_voice = buffer[12];
+        decoded.roll_entry = buffer[13];
+        decoded.auto_mode = buffer[14];
+    } else if (buffer[1] == SETTINGS_VERSION_V9) {
         const uint16_t expected = (uint16_t)(buffer[14] | ((uint16_t)buffer[15] << 8));
         if (crc16_ccitt(buffer, SETTINGS_CRC_BYTES_V9) != expected) return false;
         decoded.target = buffer[2];
@@ -312,6 +340,7 @@ bool archery_settings_decode(archery_settings_t *settings,
         decoded.timer_seconds = buffer[11];
         decoded.countdown_voice = buffer[12];
         decoded.roll_entry = buffer[13];
+        decoded.auto_mode = ARCHERY_SETTINGS_DEFAULT_AUTO_MODE;
     } else if (buffer[1] == SETTINGS_VERSION_V8) {
         const uint16_t expected = (uint16_t)(buffer[13] | ((uint16_t)buffer[14] << 8));
         if (crc16_ccitt(buffer, SETTINGS_CRC_BYTES_V8) != expected) return false;

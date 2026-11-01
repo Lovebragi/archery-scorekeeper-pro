@@ -170,6 +170,23 @@ static uint8_t face_arrow_offset(const archery_flow_t *flow, uint8_t face) {
     return offset;
 }
 
+void archery_flow_enter_setup(archery_flow_t *flow) {
+    flow->setup_row = 0;
+    if (archery_flow_target_has_faces(flow->settings.target) &&
+        archery_flow_setup_faces_total(flow) != flow->setup_arrows) {
+        split_faces(flow->setup_arrows, flow->setup_face);
+    }
+    flow->page = ARCHERY_PAGE_SETUP;
+}
+
+static archery_act_t handle_auto_check(archery_flow_t *flow, archery_key_t key) {
+    if (!flow->auto_check_done) return ARCHERY_ACT_NONE;
+    if (key == ARCHERY_KEY_OK || key == ARCHERY_KEY_OK_LONG) {
+        archery_flow_enter_setup(flow);
+    }
+    return ARCHERY_ACT_NONE;
+}
+
 static archery_act_t handle_home(archery_flow_t *flow, archery_key_t key) {
     switch (key) {
     case ARCHERY_KEY_UP:
@@ -182,13 +199,13 @@ static archery_act_t handle_home(archery_flow_t *flow, archery_key_t key) {
         break;
     case ARCHERY_KEY_OK:
         if (flow->home_select == 0) {
-            flow->setup_row = 0;
-            // 三联靶：进入设置页时确保上/中/下箭数与每组箭数一致。
-            if (archery_flow_target_has_faces(flow->settings.target) &&
-                archery_flow_setup_faces_total(flow) != flow->setup_arrows) {
-                split_faces(flow->setup_arrows, flow->setup_face);
+            if (flow->settings.auto_mode) {
+                flow->auto_check_done = 0;
+                flow->auto_check_ok = 0;
+                flow->page = ARCHERY_PAGE_AUTO_CHECK;
+                return ARCHERY_ACT_AUTO_CHECK;
             }
-            flow->page = ARCHERY_PAGE_SETUP;
+            archery_flow_enter_setup(flow);
         } else if (flow->home_select == 1) {
             flow->history_cursor = 0;
             flow->page = ARCHERY_PAGE_HISTORY;
@@ -791,6 +808,7 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_DIAG: return handle_diag(flow, key);
     case ARCHERY_PAGE_DIAG_LOG: return handle_diag_log(flow, key);
     case ARCHERY_PAGE_TIMER: return handle_timer(flow, key);
+    case ARCHERY_PAGE_AUTO_CHECK: return handle_auto_check(flow, key);
     }
     return ARCHERY_ACT_NONE;
 }
