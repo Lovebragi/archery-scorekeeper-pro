@@ -184,7 +184,7 @@ static void test_encode_decode(void) {
     copy[0] ^= 0xFF;
     assert(!archery_settings_decode(&decoded, copy, sizeof(copy)));
     memcpy(copy, buffer, sizeof(copy));
-    copy[1] = 11;
+    copy[1] = 12;
     assert(!archery_settings_decode(&decoded, copy, sizeof(copy)));
     memcpy(copy, buffer, sizeof(copy));
     copy[9] ^= 0x01;

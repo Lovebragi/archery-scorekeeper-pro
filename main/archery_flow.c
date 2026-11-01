@@ -179,6 +179,26 @@ void archery_flow_enter_setup(archery_flow_t *flow) {
     flow->page = ARCHERY_PAGE_SETUP;
 }
 
+static archery_act_t handle_beta(archery_flow_t *flow, archery_key_t key) {
+    switch (key) {
+    case ARCHERY_KEY_UP:
+        flow->beta_row = flow->beta_row == 0 ? 1u : 0u;
+        break;
+    case ARCHERY_KEY_DOWN:
+        flow->beta_row = flow->beta_row == 0 ? 1u : 0u;
+        break;
+    case ARCHERY_KEY_OK:
+        if (flow->beta_row == 0) flow->settings.auto_mode = flow->settings.auto_mode ? 0u : 1u;
+        else flow->settings.auto_reconnect = flow->settings.auto_reconnect ? 0u : 1u;
+        return ARCHERY_ACT_SETTINGS_CHANGED;
+    case ARCHERY_KEY_OK_LONG:
+        flow->settings_row = 11;
+        flow->page = ARCHERY_PAGE_SETTINGS;
+        break;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
 static archery_act_t handle_auto_check(archery_flow_t *flow, archery_key_t key) {
     if (!flow->auto_check_done) return ARCHERY_ACT_NONE;
     if (key == ARCHERY_KEY_OK || key == ARCHERY_KEY_OK_LONG) {
@@ -444,6 +464,11 @@ static archery_act_t handle_settings(archery_flow_t *flow, archery_key_t key) {
                                  ? 0u : (uint8_t)(flow->settings_row + 1u);
         break;
     case ARCHERY_KEY_OK:
+        if (flow->settings_row == 11u) {
+            flow->beta_row = 0;
+            flow->page = ARCHERY_PAGE_BETA;
+            break;
+        }
         if (flow->settings_row < ARCHERY_SETTINGS_ROWS &&
             settings_cycle_value(&flow->settings, flow->settings_row)) {
             // 靶型在下一组开始时生效；方向/亮度立即生效；息屏时间立即被空闲计时采用。
@@ -809,6 +834,7 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_DIAG_LOG: return handle_diag_log(flow, key);
     case ARCHERY_PAGE_TIMER: return handle_timer(flow, key);
     case ARCHERY_PAGE_AUTO_CHECK: return handle_auto_check(flow, key);
+    case ARCHERY_PAGE_BETA: return handle_beta(flow, key);
     }
     return ARCHERY_ACT_NONE;
 }

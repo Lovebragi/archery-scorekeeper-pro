@@ -91,6 +91,7 @@ static archery_key_t s_repeat_key;
 static key_guard_t s_key_guard;
 static int64_t s_wake_click_until_us;
 static int64_t s_next_wifi_retry_us;
+static uint8_t s_wifi_retry_step;
 static esp_timer_handle_t s_diag_timer;
 static esp_timer_handle_t s_timer_tick;
 static bool s_timer_running;
@@ -204,6 +205,7 @@ static void apply_settings(const archery_settings_t *settings) {
     s_rotate_keys = settings->rotate != 0;
     archery_voice_set_beep_volume((uint8_t)(settings->beep_volume * 20u));
     archery_voice_set_countdown_voice(settings->countdown_voice);
+    archery_wifi_set_auto_reconnect(settings->auto_reconnect != 0);
     archery_wifi_set_save_enabled(settings->wifi_save != 0);
     if (!settings->wifi_save) archery_wifi_forget_credentials();
     if (bsp_lvgl_lock(200)) {
@@ -1093,10 +1095,19 @@ static void worker_task(void *argument) {
             archery_flow_enter_setup(&s_flow);
             redraw();
         }
-        if (s_flow.page == ARCHERY_PAGE_ENTRY && !archery_wifi_connected() &&
-            now >= s_next_wifi_retry_us) {
+        if (archery_wifi_connected()) {
+            s_wifi_retry_step = 0;
+            s_next_wifi_retry_us = 0;
+        } else if (s_flow.settings.auto_reconnect &&
+                   s_flow.page != ARCHERY_PAGE_WIFI &&
+                   s_flow.page != ARCHERY_PAGE_WIFI_PASSWORD &&
+                   !archery_wifi_provisioning() &&
+                   now >= s_next_wifi_retry_us) {
+            static const uint32_t backoff[] = {30, 60, 120, 300, 600};
             (void)archery_wifi_reconnect();
-            s_next_wifi_retry_us = now + (int64_t)15 * 1000000;
+            const uint32_t seconds = backoff[s_wifi_retry_step < 5 ? s_wifi_retry_step : 4];
+            if (s_wifi_retry_step < 5) s_wifi_retry_step++;
+            s_next_wifi_retry_us = now + (int64_t)seconds * 1000000;
         }
         const uint16_t off_seconds = s_flow.settings.off_seconds;
         if (off_seconds > 0 &&

@@ -821,7 +821,7 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
     static const char *row_names[] = {"靶子类型", "屏幕方向", "屏幕亮度",
                                       "息屏时间", "记录内十", "每组计时",
                                       "倒数十秒语音", "语音录靶", "滚动录入",
-                                      "提示音量", "保存Wi-Fi密码", "自动训练模式"};
+                                      "提示音量", "保存Wi-Fi密码", "Beta功能测试"};
     char value[24];
     const uint8_t visible = 6;
     uint8_t offset = flow->settings_row >= visible ? (uint8_t)(flow->settings_row - visible + 1u) : 0u;
@@ -878,8 +878,7 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
             snprintf(value, sizeof(value), "%s",
                      flow->settings.wifi_save ? "开" : "关");
         } else if (row == 11) {
-            snprintf(value, sizeof(value), "%s",
-                     flow->settings.auto_mode ? "开" : "关");
+            snprintf(value, sizeof(value), "%s", "进入");
         }
         lv_obj_t *number = make_label(card, value, ARCHERY_FONT_BODY,
                                       selected ? C_GOLD : C_TEXT);
@@ -887,6 +886,27 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
     }
     add_hint(scr, "上/下 选择 · 确定 循环", 262);
     add_hint(scr, "长按确定 保存返回", 288);
+}
+
+static void render_beta(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "Beta 功能测试");
+    static const char *names[] = {"自动训练模式", "自动重连网络"};
+    char value[16];
+    for (uint8_t row = 0; row < 2; row++) {
+        const archery_rect_t rect = {20, (int16_t)(80 + row * 40), 200, 32};
+        const bool selected = flow->beta_row == row;
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        lv_obj_t *name = make_label(card, names[row], ARCHERY_FONT_BODY,
+                                    selected ? C_GOLD : C_TEXT);
+        lv_obj_align(name, LV_ALIGN_LEFT_MID, 12, 0);
+        const bool on = row == 0 ? flow->settings.auto_mode : flow->settings.auto_reconnect;
+        snprintf(value, sizeof(value), "%s", on ? "开" : "关");
+        lv_obj_t *state = make_label(card, value, ARCHERY_FONT_BODY,
+                                     selected ? C_GOLD : C_TEXT);
+        lv_obj_align(state, LV_ALIGN_RIGHT_MID, -12, 0);
+    }
+    add_hint(scr, "上/下 选择 · 确定 切换", 262);
+    add_hint(scr, "长按确定 返回设置", 288);
 }
 
 static void render_auto_check(lv_obj_t *scr, const archery_flow_t *flow) {
@@ -1204,6 +1224,7 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_ABORT_CONFIRM: render_confirm(scr, flow, history, true); break;
     case ARCHERY_PAGE_SETTINGS: render_settings(scr, flow); break;
     case ARCHERY_PAGE_AUTO_CHECK: render_auto_check(scr, flow); break;
+    case ARCHERY_PAGE_BETA: render_beta(scr, flow); break;
     case ARCHERY_PAGE_CLOCK: render_clock(scr, flow); break;
     case ARCHERY_PAGE_WIFI: render_wifi(scr, flow); break;
     case ARCHERY_PAGE_WIFI_PASSWORD: render_wifi_password(scr, flow); break;

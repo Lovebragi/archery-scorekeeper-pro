@@ -88,6 +88,8 @@ static bool s_save_pending;
 void archery_wifi_set_save_enabled(bool enabled) { s_save_enabled = enabled; }
 bool archery_wifi_save_enabled(void) { return s_save_enabled; }
 
+void archery_wifi_set_auto_reconnect(bool enabled) { s_auto_reconnect = enabled; }
+
 void archery_wifi_forget_credentials(void) {
     nvs_handle_t handle;
     if (nvs_open(NVS_NS, NVS_READWRITE, &handle) == ESP_OK) {

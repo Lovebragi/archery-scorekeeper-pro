@@ -28,6 +28,7 @@ typedef enum {
     ARCHERY_PAGE_DIAG_LOG,
     ARCHERY_PAGE_TIMER,
     ARCHERY_PAGE_AUTO_CHECK,
+    ARCHERY_PAGE_BETA,
 } archery_page_t;
 
 // 主页入口数：开始训练 / 历史记录 / 设置 / 联网。
@@ -124,6 +125,7 @@ typedef struct {
     uint8_t wifi_ap_count;  // 扫描到的网络数（列表末行是"返回"）
     uint8_t auto_check_ok;    // 自动训练检测结果
     uint8_t auto_check_done;
+    uint8_t beta_row;
     uint8_t wifi_secure_mask;  // 扫描结果里哪些是加密网络（bit0 = 第 1 个）
     uint8_t wifi_target;    // 正在输入密码的网络下标
     char wifi_password[65]; // 设备上输入的密码

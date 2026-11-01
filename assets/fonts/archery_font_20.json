@@ -369,6 +369,7 @@
   32593,
   32622,
   32852,
+  33021,
   33073,
   33258,
   33719,
@@ -4073,8 +4074,18 @@
    "adv_w": 320
   },
   {
-   "codepoint": 33073,
+   "codepoint": 33021,
    "glyph": 363,
+   "sha256": "f1bbeafeda08dd7dc30ba9d17db2a3575e559c71c6794368fda4bbb13566d419",
+   "box_w": 20,
+   "box_h": 20,
+   "ofs_x": 0,
+   "ofs_y": -2,
+   "adv_w": 320
+  },
+  {
+   "codepoint": 33073,
+   "glyph": 364,
    "sha256": "7a0f6fe750f2e226b63d1d0388e53e87a347c46193a7eba56ecbc7b4d177b6ef",
    "box_w": 21,
    "box_h": 19,
@@ -4084,7 +4095,7 @@
   },
   {
    "codepoint": 33258,
-   "glyph": 364,
+   "glyph": 365,
    "sha256": "874b106e87a8d03c00e51a2dd2e5595821ed31188d054bbb690460310c393c57",
    "box_w": 20,
    "box_h": 19,
@@ -4094,7 +4105,7 @@
   },
   {
    "codepoint": 33719,
-   "glyph": 365,
+   "glyph": 366,
    "sha256": "8773c2cbc3b3cfd6747f446125832f448c2d2ac074802ab35661f228c99b14cd",
    "box_w": 20,
    "box_h": 19,
@@ -4104,7 +4115,7 @@
   },
   {
    "codepoint": 34013,
-   "glyph": 366,
+   "glyph": 367,
    "sha256": "e71f9134ee72e5cd4ff7ebaf824b96984b9a2a06932e93d93a19650b64fa06f0",
    "box_w": 20,
    "box_h": 18,
@@ -4114,7 +4125,7 @@
   },
   {
    "codepoint": 34109,
-   "glyph": 367,
+   "glyph": 368,
    "sha256": "3d66718bc7d0c0ea973ec1db720015498d29e3adce71f0344cf306c26d2ea6ce",
    "box_w": 20,
    "box_h": 20,
@@ -4124,7 +4135,7 @@
   },
   {
    "codepoint": 34892,
-   "glyph": 368,
+   "glyph": 369,
    "sha256": "89953a3ba58341c38912b71827ead97e7ccd6f38aaed502492d0fda7f152f474",
    "box_w": 20,
    "box_h": 19,
@@ -4134,7 +4145,7 @@
   },
   {
    "codepoint": 34920,
-   "glyph": 369,
+   "glyph": 370,
    "sha256": "4422a1dd32ff603caa7c57d1b265a5b030b14d95d630b9219c804ba8f34b2f31",
    "box_w": 20,
    "box_h": 19,
@@ -4144,7 +4155,7 @@
   },
   {
    "codepoint": 35201,
-   "glyph": 370,
+   "glyph": 371,
    "sha256": "e391aacfbd3359de3f410fea1150f8ebde1a3cf3916c1c19d086dedc1662f127",
    "box_w": 20,
    "box_h": 19,
@@ -4154,7 +4165,7 @@
   },
   {
    "codepoint": 35272,
-   "glyph": 371,
+   "glyph": 372,
    "sha256": "985d19f8068a21a7640f0859e62c1956b5c99c080b57f26eb17a4446e15e7b0e",
    "box_w": 20,
    "box_h": 19,
@@ -4164,7 +4175,7 @@
   },
   {
    "codepoint": 35745,
-   "glyph": 372,
+   "glyph": 373,
    "sha256": "8ccf57bfce038da0263614d2fcce0080fca4bb4652eb2062fbf19b83f7d29973",
    "box_w": 20,
    "box_h": 19,
@@ -4174,7 +4185,7 @@
   },
   {
    "codepoint": 35748,
-   "glyph": 373,
+   "glyph": 374,
    "sha256": "a70ac7b8d015f13f45dba679c6d7daf8e3e78d37c31e89fbfc263e9d4fa04af9",
    "box_w": 20,
    "box_h": 19,
@@ -4184,7 +4195,7 @@
   },
   {
    "codepoint": 35757,
-   "glyph": 374,
+   "glyph": 375,
    "sha256": "6c0a3f55e2d32065b7a7bc1623c960e4eb6b873b8c3dfe9103d9c62779796ece",
    "box_w": 20,
    "box_h": 19,
@@ -4194,7 +4205,7 @@
   },
   {
    "codepoint": 35760,
-   "glyph": 375,
+   "glyph": 376,
    "sha256": "fc8298e9a95b9485d3ee99c73d5298e28d481ba0766868f8f64a8b65c67cd742",
    "box_w": 20,
    "box_h": 18,
@@ -4204,7 +4215,7 @@
   },
   {
    "codepoint": 35774,
-   "glyph": 376,
+   "glyph": 377,
    "sha256": "54b4de545f58a9656c17b0318efdd834bc1f65b82166d6df4f2cc5bffba348ff",
    "box_w": 20,
    "box_h": 19,
@@ -4214,7 +4225,7 @@
   },
   {
    "codepoint": 35777,
-   "glyph": 377,
+   "glyph": 378,
    "sha256": "6e7183c02e792b815ce1fd379f10c391171d70c2ff6a18cf23dd2026b00dc7b9",
    "box_w": 20,
    "box_h": 18,
@@ -4224,7 +4235,7 @@
   },
   {
    "codepoint": 35782,
-   "glyph": 378,
+   "glyph": 379,
    "sha256": "2aff752e91a66fa491d69193fb430be43fdfab0db43b80b72be9a9c0e28da805",
    "box_w": 20,
    "box_h": 19,
@@ -4234,7 +4245,7 @@
   },
   {
    "codepoint": 35786,
-   "glyph": 379,
+   "glyph": 380,
    "sha256": "c0233006ddae2d25122120e04c0ba3d704860eb9b3defb8a2e66345c9c8dca47",
    "box_w": 20,
    "box_h": 19,
@@ -4244,7 +4255,7 @@
   },
   {
    "codepoint": 35797,
-   "glyph": 380,
+   "glyph": 381,
    "sha256": "b8b28083bfa5a1c856ff45989fcbc57706652089e483210f7073cd0bdc337982",
    "box_w": 20,
    "box_h": 19,
@@ -4254,7 +4265,7 @@
   },
   {
    "codepoint": 35805,
-   "glyph": 381,
+   "glyph": 382,
    "sha256": "5360bac4af80a4cdbc00b3e95ca3de48aace4f8093c72d3f7f61378b9a0a9956",
    "box_w": 20,
    "box_h": 19,
@@ -4264,7 +4275,7 @@
   },
   {
    "codepoint": 35813,
-   "glyph": 382,
+   "glyph": 383,
    "sha256": "2ba813fc053f43f13eaf1d7067b686bb956f5984e087bc2b681f71be3a461071",
    "box_w": 20,
    "box_h": 20,
@@ -4274,7 +4285,7 @@
   },
   {
    "codepoint": 35814,
-   "glyph": 383,
+   "glyph": 384,
    "sha256": "d780fe4903856127d664b7d5677b9f736f50dbf0b622e795b6a127617ccd6662",
    "box_w": 20,
    "box_h": 20,
@@ -4284,7 +4295,7 @@
   },
   {
    "codepoint": 35821,
-   "glyph": 384,
+   "glyph": 385,
    "sha256": "be80fd5c2ad514a4381d093e631cf24c38a4fd5971d95d6d9b7f84ecd90dd019",
    "box_w": 20,
    "box_h": 20,
@@ -4294,7 +4305,7 @@
   },
   {
    "codepoint": 35823,
-   "glyph": 385,
+   "glyph": 386,
    "sha256": "80a6d8904217301b7327b4298d53558a3378984d530fa08c7b5d18f5d87457d6",
    "box_w": 21,
    "box_h": 19,
@@ -4304,7 +4315,7 @@
   },
   {
    "codepoint": 35828,
-   "glyph": 386,
+   "glyph": 387,
    "sha256": "c5cd62b0f51ada80d0897501ef82f6f3412d81477df8ee26ade8f8c201db8e5f",
    "box_w": 20,
    "box_h": 19,
@@ -4314,7 +4325,7 @@
   },
   {
    "codepoint": 35831,
-   "glyph": 387,
+   "glyph": 388,
    "sha256": "7996a208a7e6e4e63de9899801ca0bdac96a50eb751f72c3c0651458399eed42",
    "box_w": 20,
    "box_h": 19,
@@ -4324,7 +4335,7 @@
   },
   {
    "codepoint": 35835,
-   "glyph": 388,
+   "glyph": 389,
    "sha256": "97ae0ca77927a812b33b9e17f5810c039ec2747f3bb2af20d8b212b9e7b3a086",
    "box_w": 20,
    "box_h": 19,
@@ -4334,7 +4345,7 @@
   },
   {
    "codepoint": 35843,
-   "glyph": 389,
+   "glyph": 390,
    "sha256": "d5ee663e7b5f2cff309e57b66ba33255236cc3d8d5e94f9fe266b4211ca9b552",
    "box_w": 20,
    "box_h": 19,
@@ -4344,7 +4355,7 @@
   },
   {
    "codepoint": 35910,
-   "glyph": 390,
+   "glyph": 391,
    "sha256": "2419069b5b28fd308368ecb557b00d6ec41f02e5976f84f76f9d9fe5a3444dc3",
    "box_w": 20,
    "box_h": 17,
@@ -4354,7 +4365,7 @@
   },
   {
    "codepoint": 36133,
-   "glyph": 391,
+   "glyph": 392,
    "sha256": "88d6f786f136d2921487dde094360940d967cd2dfc56a1826bbf620e1725b29f",
    "box_w": 20,
    "box_h": 19,
@@ -4364,7 +4375,7 @@
   },
   {
    "codepoint": 36187,
-   "glyph": 392,
+   "glyph": 393,
    "sha256": "9b5c814367c0534d02292426744fd40fe1f0a5172024b3048b4f3c94c31d6d1e",
    "box_w": 20,
    "box_h": 19,
@@ -4374,7 +4385,7 @@
   },
   {
    "codepoint": 36229,
-   "glyph": 393,
+   "glyph": 394,
    "sha256": "91025faf9dcc3c099988d7a5328d426f494c2b5aac001342aa734198f6dde607",
    "box_w": 20,
    "box_h": 19,
@@ -4384,7 +4395,7 @@
   },
   {
    "codepoint": 36339,
-   "glyph": 394,
+   "glyph": 395,
    "sha256": "2a807d64a95a340269edd386bcc6b23b5912535f2811f40f8c5706068fdafb06",
    "box_w": 20,
    "box_h": 20,
@@ -4394,7 +4405,7 @@
   },
   {
    "codepoint": 36716,
-   "glyph": 395,
+   "glyph": 396,
    "sha256": "540066ec42c9e78b511070adb2db61afffc32c236fa42943db43831a8b3fe321",
    "box_w": 20,
    "box_h": 19,
@@ -4404,7 +4415,7 @@
   },
   {
    "codepoint": 36719,
-   "glyph": 396,
+   "glyph": 397,
    "sha256": "6abeb6090bde892b03be6bce90746468f4ef730f9e040d7a02e24f5220869c9f",
    "box_w": 20,
    "box_h": 20,
@@ -4414,7 +4425,7 @@
   },
   {
    "codepoint": 36733,
-   "glyph": 397,
+   "glyph": 398,
    "sha256": "a8762db4ccf461c5be0c197ca63bc0d612c5c4b324407ad7c8519cb3ef3e934b",
    "box_w": 20,
    "box_h": 19,
@@ -4424,7 +4435,7 @@
   },
   {
    "codepoint": 36755,
-   "glyph": 398,
+   "glyph": 399,
    "sha256": "f13b898cfa3a3c97c1e71f6b94b3451000a7260ea3c2d650b83e2541318be277",
    "box_w": 20,
    "box_h": 19,
@@ -4434,7 +4445,7 @@
   },
   {
    "codepoint": 36807,
-   "glyph": 399,
+   "glyph": 400,
    "sha256": "d58b859a9c44e462ef892a6a4df9bf58652c0530a6e84aa83ca30de3b5038cb9",
    "box_w": 20,
    "box_h": 19,
@@ -4444,7 +4455,7 @@
   },
   {
    "codepoint": 36816,
-   "glyph": 400,
+   "glyph": 401,
    "sha256": "fd2a8e0fdf86d383487dfb1f675803b0dd83b6f6836fc7b36d3fb1d7fdc73963",
    "box_w": 20,
    "box_h": 18,
@@ -4454,7 +4465,7 @@
   },
   {
    "codepoint": 36817,
-   "glyph": 401,
+   "glyph": 402,
    "sha256": "473f1e8c13c92da20f619ac2edb264fe215ff20bfa4576f2b578ec8b9364c0e8",
    "box_w": 20,
    "box_h": 19,
@@ -4464,7 +4475,7 @@
   },
   {
    "codepoint": 36820,
-   "glyph": 402,
+   "glyph": 403,
    "sha256": "1732c42baaf43bdc2999c8e85ad2189ffb4ae7a71411c5608e0d4efb8448e345",
    "box_w": 20,
    "box_h": 19,
@@ -4474,7 +4485,7 @@
   },
   {
    "codepoint": 36824,
-   "glyph": 403,
+   "glyph": 404,
    "sha256": "f5c331cccbcd968afe78afa844c42516ccfdc68853e4e392dafa2b97f50d1f52",
    "box_w": 20,
    "box_h": 19,
@@ -4484,7 +4495,7 @@
   },
   {
    "codepoint": 36827,
-   "glyph": 404,
+   "glyph": 405,
    "sha256": "d6d312c9f11149b873daa0cf005a6814fea111e8666a3f7f8c127d9c89135fe7",
    "box_w": 20,
    "box_h": 19,
@@ -4494,7 +4505,7 @@
   },
   {
    "codepoint": 36830,
-   "glyph": 405,
+   "glyph": 406,
    "sha256": "2f983a157862cab50a2500e4a5337ee782526128e8c0beb811818e78985499fa",
    "box_w": 20,
    "box_h": 20,
@@ -4504,7 +4515,7 @@
   },
   {
    "codepoint": 36865,
-   "glyph": 406,
+   "glyph": 407,
    "sha256": "e15bdfce3e39fa3174a46e3249822221e47acbb53a643a7ba53c5231708478d9",
    "box_w": 20,
    "box_h": 20,
@@ -4514,7 +4525,7 @@
   },
   {
    "codepoint": 36873,
-   "glyph": 407,
+   "glyph": 408,
    "sha256": "3be362828d95621a822d7d440b25f2cd63be21bc82ed8c2951717db9ff88b068",
    "box_w": 20,
    "box_h": 19,
@@ -4524,7 +4535,7 @@
   },
   {
    "codepoint": 36880,
-   "glyph": 408,
+   "glyph": 409,
    "sha256": "a4d9c464eec95731bcf541a03068d52d9b467600295a3fa67cb2e0083b0c0945",
    "box_w": 20,
    "box_h": 19,
@@ -4534,7 +4545,7 @@
   },
   {
    "codepoint": 36890,
-   "glyph": 409,
+   "glyph": 410,
    "sha256": "31af3a1a8828a0ce7b01d2611797e3b8e255f47b9c3ebdd2631991832c6f6011",
    "box_w": 20,
    "box_h": 19,
@@ -4544,7 +4555,7 @@
   },
   {
    "codepoint": 36895,
-   "glyph": 410,
+   "glyph": 411,
    "sha256": "ef202163ee042886249a37e9197ea68e586051ee0d3a725128d0f4a09b33bb7d",
    "box_w": 20,
    "box_h": 20,
@@ -4554,7 +4565,7 @@
   },
   {
    "codepoint": 37096,
-   "glyph": 411,
+   "glyph": 412,
    "sha256": "292083e16e29040ba3ef97ccd951a98368d7280a427471b866804dda4694bc71",
    "box_w": 20,
    "box_h": 19,
@@ -4564,7 +4575,7 @@
   },
   {
    "codepoint": 37197,
-   "glyph": 412,
+   "glyph": 413,
    "sha256": "51359c03b56531c7a95462d9e02219ea63e1ec2aea47e7f60b49c0e10bd5f05a",
    "box_w": 20,
    "box_h": 19,
@@ -4574,7 +4585,7 @@
   },
   {
    "codepoint": 37266,
-   "glyph": 413,
+   "glyph": 414,
    "sha256": "5ae0521e08d2453ce54de94adc29dc2b4cfc82b06ad45387860516009522f04a",
    "box_w": 20,
    "box_h": 18,
@@ -4584,7 +4595,7 @@
   },
   {
    "codepoint": 37325,
-   "glyph": 414,
+   "glyph": 415,
    "sha256": "aba2e73226b17377bbe37459f9d3057c4a21a7d123508bd72fb89f0397f5fd65",
    "box_w": 20,
    "box_h": 19,
@@ -4594,7 +4605,7 @@
   },
   {
    "codepoint": 37327,
-   "glyph": 415,
+   "glyph": 416,
    "sha256": "8cd328479e4f31266794c84e6f4596e2f07cc16921dcb85eb7d85967a77ee18c",
    "box_w": 20,
    "box_h": 17,
@@ -4604,7 +4615,7 @@
   },
   {
    "codepoint": 38145,
-   "glyph": 416,
+   "glyph": 417,
    "sha256": "2b503a25b4f7f35f017021471e58fe36a71f6577cf895d62fe4d2b87ee6773b1",
    "box_w": 20,
    "box_h": 19,
@@ -4614,7 +4625,7 @@
   },
   {
    "codepoint": 38169,
-   "glyph": 417,
+   "glyph": 418,
    "sha256": "061f0c689c3158f94cfe0a31fbb2697fd81639de51fcaf947cd6816233c699cb",
    "box_w": 20,
    "box_h": 19,
@@ -4624,7 +4635,7 @@
   },
   {
    "codepoint": 38190,
-   "glyph": 418,
+   "glyph": 419,
    "sha256": "734545047e50a7de32b257ecba636291bb4e746abbfe0045827257faf9c13444",
    "box_w": 20,
    "box_h": 19,
@@ -4634,7 +4645,7 @@
   },
   {
    "codepoint": 38271,
-   "glyph": 419,
+   "glyph": 420,
    "sha256": "9c6420c40926beefc22a5b678f6b4d060203dffea58aefe1cf5a481902aa9ae8",
    "box_w": 20,
    "box_h": 19,
@@ -4644,7 +4655,7 @@
   },
   {
    "codepoint": 38376,
-   "glyph": 420,
+   "glyph": 421,
    "sha256": "534ce40dd2f716d696dba580b72ac3e1a00f6a91347060bf3755ed076802c879",
    "box_w": 20,
    "box_h": 20,
@@ -4654,7 +4665,7 @@
   },
   {
    "codepoint": 38381,
-   "glyph": 421,
+   "glyph": 422,
    "sha256": "5e2bb916cc3231352c46aa5112b886fd7e041073e5d97fa98e07ea53e7bc510a",
    "box_w": 20,
    "box_h": 19,
@@ -4664,7 +4675,7 @@
   },
   {
    "codepoint": 38386,
-   "glyph": 422,
+   "glyph": 423,
    "sha256": "a18ecbf26fede5cd1a12a7cf847a69bbd6fd928e58986e97d13760ed4353e229",
    "box_w": 20,
    "box_h": 19,
@@ -4674,7 +4685,7 @@
   },
   {
    "codepoint": 38388,
-   "glyph": 423,
+   "glyph": 424,
    "sha256": "68441d9be39b7060bd3344f442b63d5a3925f02bf580dc3f592cd8a5c2d5549f",
    "box_w": 20,
    "box_h": 19,
@@ -4684,7 +4695,7 @@
   },
   {
    "codepoint": 38431,
-   "glyph": 424,
+   "glyph": 425,
    "sha256": "e32dd77e6731a237cd1b0d990ef4d2732e142972b3dd0bf69aec61cf4a074599",
    "box_w": 20,
    "box_h": 20,
@@ -4694,7 +4705,7 @@
   },
   {
    "codepoint": 38450,
-   "glyph": 425,
+   "glyph": 426,
    "sha256": "b1f8d15674d28da741854c2e54aa68c45b4d4ab40e3383381d8c86566c0c1957",
    "box_w": 20,
    "box_h": 20,
@@ -4704,7 +4715,7 @@
   },
   {
    "codepoint": 38468,
-   "glyph": 426,
+   "glyph": 427,
    "sha256": "930fbb68e719908b629b1abfc66307278c382b1eb48ad3a42db3ee29e48c0c1d",
    "box_w": 20,
    "box_h": 20,
@@ -4714,7 +4725,7 @@
   },
   {
    "codepoint": 38500,
-   "glyph": 427,
+   "glyph": 428,
    "sha256": "d08bbd89460898738b10b5f21bf0adb829d73a91f4a30b1df4189a8e151c3e93",
    "box_w": 20,
    "box_h": 20,
@@ -4724,7 +4735,7 @@
   },
   {
    "codepoint": 38656,
-   "glyph": 428,
+   "glyph": 429,
    "sha256": "ec620995cf664b5e60d62b48d8e2c22383c1a4e93df854d5ff6059b16e2518a1",
    "box_w": 20,
    "box_h": 19,
@@ -4734,7 +4745,7 @@
   },
   {
    "codepoint": 38754,
-   "glyph": 429,
+   "glyph": 430,
    "sha256": "b0d13f2e0259e9e3dd5a41d731210d643616b1cc1641f8a8bc79a4647455455a",
    "box_w": 20,
    "box_h": 18,
@@ -4744,7 +4755,7 @@
   },
   {
    "codepoint": 38774,
-   "glyph": 430,
+   "glyph": 431,
    "sha256": "6d764d4375af1740c1821433a9f5373f23e6622e6752e5f13b51c0133bf85bfd",
    "box_w": 20,
    "box_h": 19,
@@ -4754,7 +4765,7 @@
   },
   {
    "codepoint": 38899,
-   "glyph": 431,
+   "glyph": 432,
    "sha256": "5d08aabb360853bd5f2650b67d2ccee6a1e195a95eee602d53d37e2e4e521d9e",
    "box_w": 20,
    "box_h": 20,
@@ -4764,7 +4775,7 @@
   },
   {
    "codepoint": 39029,
-   "glyph": 432,
+   "glyph": 433,
    "sha256": "3cb5984e9ce91468c88630d65127447704231e21848c254a599a1cd5888f03b4",
    "box_w": 20,
    "box_h": 18,
@@ -4774,7 +4785,7 @@
   },
   {
    "codepoint": 39033,
-   "glyph": 433,
+   "glyph": 434,
    "sha256": "d86d7410b758d744f3d694e28e8509a9e7b9c08144c3652917429b8318bda03c",
    "box_w": 20,
    "box_h": 18,
@@ -4784,7 +4795,7 @@
   },
   {
    "codepoint": 39118,
-   "glyph": 434,
+   "glyph": 435,
    "sha256": "f6827eabe4c399571d90d2fcbde7e7e320800ae8056cbfcb6088e10637acfa8e",
    "box_w": 20,
    "box_h": 18,
@@ -4794,7 +4805,7 @@
   },
   {
    "codepoint": 39318,
-   "glyph": 435,
+   "glyph": 436,
    "sha256": "7f49c12775f25acac9fd275693caf3dd055b0ae6c62a4974bcdc650f93a9b56e",
    "box_w": 20,
    "box_h": 19,
@@ -4804,7 +4815,7 @@
   },
   {
    "codepoint": 39564,
-   "glyph": 436,
+   "glyph": 437,
    "sha256": "8b3af4b8d668438686dc8b3a1ce288efdbe83cb7e723bcd0757a5a06bf24ffc6",
    "box_w": 20,
    "box_h": 20,
@@ -4814,7 +4825,7 @@
   },
   {
    "codepoint": 40614,
-   "glyph": 437,
+   "glyph": 438,
    "sha256": "a4f841ebbf15aacec05ff4320fa76ec30fb248f1b26aff918b5a4ed4f96fe980",
    "box_w": 20,
    "box_h": 19,
@@ -4824,7 +4835,7 @@
   },
   {
    "codepoint": 40664,
-   "glyph": 438,
+   "glyph": 439,
    "sha256": "7c645b388bc106fde137d2739658505bde02d9418531c51f84c1e97d04905afa",
    "box_w": 20,
    "box_h": 19,
@@ -4834,7 +4845,7 @@
   },
   {
    "codepoint": 65288,
-   "glyph": 439,
+   "glyph": 440,
    "sha256": "3cb3a71dc8600253246dd4f678fd99370195d7009311397a4b0ae2be90c695e5",
    "box_w": 20,
    "box_h": 20,
@@ -4844,7 +4855,7 @@
   },
   {
    "codepoint": 65289,
-   "glyph": 440,
+   "glyph": 441,
    "sha256": "089cecc34b897b8b678a6385f65cac0837efe39de476cebf8bf0037e4d63f490",
    "box_w": 20,
    "box_h": 20,
@@ -4854,7 +4865,7 @@
   },
   {
    "codepoint": 65292,
-   "glyph": 441,
+   "glyph": 442,
    "sha256": "4590c9ef922d12d9b377730a85c38f58118c490e66dd130e5c0f5beaf349fe8a",
    "box_w": 20,
    "box_h": 7,
@@ -4864,7 +4875,7 @@
   },
   {
    "codepoint": 65306,
-   "glyph": 442,
+   "glyph": 443,
    "sha256": "40190a2b15a9197558c8e5c34d6f3040ceb335d23b486bc35c10d2d3f4a1d319",
    "box_w": 20,
    "box_h": 13,
@@ -4874,7 +4885,7 @@
   },
   {
    "codepoint": 65311,
-   "glyph": 443,
+   "glyph": 444,
    "sha256": "2682b85b32649a2def087a4f04c7cf388cfbbf2a693e2f5c78841afcdf535564",
    "box_w": 20,
    "box_h": 15,

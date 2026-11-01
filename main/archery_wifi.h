@@ -48,5 +48,6 @@ esp_err_t archery_wifi_reconnect(void);
 esp_err_t archery_wifi_disconnect(void);
 bool archery_wifi_connected(void);
 void archery_wifi_commit_credentials(void);
+void archery_wifi_set_auto_reconnect(bool enabled);
 bool archery_wifi_provisioning(void);
 void archery_wifi_verify_voice_async(void);
