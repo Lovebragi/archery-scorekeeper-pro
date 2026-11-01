@@ -416,9 +416,15 @@ static void run_ws_session(void) {
         play_tone(1000, 80, 1, 0);
     } else {
         strncpy(s_result.error, "parse", sizeof(s_result.error) - 1);
-        archery_voice_set_status(parsed.error == ARCHERY_SPEECH_MISMATCH
-                                     ? "数量对不上，请重说"
-                                     : "没听清，请重说");
+        char msg[128];
+        if (latest[0]) {
+            snprintf(msg, sizeof(msg), "%s：%.60s",
+                     parsed.error == ARCHERY_SPEECH_MISMATCH ? "数量对不上" : "没听清",
+                     latest);
+        } else {
+            snprintf(msg, sizeof(msg), "没听清：未识别到文字");
+        }
+        archery_voice_set_status(msg);
         play_tone(600, 150, 2, 100);
     }
     s_result_ready = true;
