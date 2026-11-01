@@ -708,9 +708,9 @@ static void test_wifi_password(void) {
     // 确定下一位
     press(&flow, ARCHERY_KEY_OK);
     assert(flow.wifi_pw_pos == 1);
-    // 空位再按确定：提交连接
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) ==
-           ARCHERY_ACT_WIFI_CONNECT_PASSWORD);
+    // 短按确定只移动光标，不再自动连接（连接由双击确定触发）
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_NONE);
+    assert(flow.wifi_pw_pos == 2);
     assert(strcmp(flow.wifi_password, "1") == 0);
 
     // 长按删除：两位退到一位，再退到空
