@@ -47,6 +47,8 @@ const char *archery_voice_api_key(void);
 esp_err_t archery_voice_save_api_key(const char *api_key);
 const char *archery_voice_token(void);
 bool archery_voice_has_credentials(void);
+// 用当前凭据做一次 WebSocket 握手，验证配置。
+bool archery_voice_test_credentials(void);
 
 // 进入录入页时预热 WSS 连接，按下后能立刻开始录音。
 void archery_voice_prewarm(void);
@@ -58,6 +60,12 @@ void archery_voice_set_countdown_voice(uint8_t mode);
 
 // 用当前音量响一声，供设置页试听；0 时为静音。
 void archery_voice_preview_beep(void);
+// 配置保存成功的柔和提示音。
+void archery_voice_play_saved(void);
+// 提前打开音频，避免 TLS 握手后再初始化失败。
+void archery_voice_prepare_audio(void);
+// 配置失败提示音（sol -> do）。
+void archery_voice_play_config_failed(void);
 // 比赛计时剩 30 秒的特殊提示音（三声高频）。
 void archery_voice_beep_warning(void);
 // 播报倒计时数字（10..1），音频为预生成的豆包语音片段。

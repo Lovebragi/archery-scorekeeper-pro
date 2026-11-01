@@ -10,6 +10,10 @@
 #include "archery_wifi_store.h"
 
 #include "archery_voice.h"
+#include "archery_app.h"
+#include "archery_ws_client.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "archery_clock.h"
 #include "esp_event.h"
@@ -525,6 +529,42 @@ static esp_err_t http_voice_set(httpd_req_t *req) {
     return httpd_resp_sendstr(req, url[0] ? "已保存语音地址" : "语音地址已清空");
 }
 
+static volatile bool s_voice_verifying;
+
+static void verify_voice_task(void *arg) {
+    (void)arg;
+    ESP_LOGI("archery_wifi", "voice verify start");
+    const bool ok = archery_voice_test_credentials();
+    const int code = archery_ws_last_status();
+    ESP_LOGI("archery_wifi", "voice verify result=%d http=%d", (int)ok, code);
+    if (ok) {
+        archery_voice_set_status("语音配置成功");
+        archery_voice_play_saved();
+    } else if (code == 401 || code == 403) {
+        archery_voice_set_status("语音 Key 无效");
+        archery_voice_play_config_failed();
+    } else {
+        // 配网页常在热点模式，设备没有外网，不能据此判定 Key 错误。
+        archery_voice_set_status("已保存，联网后验证");
+    }
+    archery_app_refresh();
+    s_voice_verifying = false;
+    vTaskDelete(NULL);
+}
+
+void archery_wifi_verify_voice_async(void) {
+    archery_voice_prepare_audio();
+    if (s_voice_verifying) return;
+    s_voice_verifying = true;
+    archery_voice_set_status("正在验证语音");
+    archery_app_refresh();
+    if (xTaskCreate(verify_voice_task, "voice_verify", 8192, NULL, 3, NULL) != pdPASS) {
+        s_voice_verifying = false;
+        archery_voice_set_status("验证任务创建失败");
+        archery_app_refresh();
+    }
+}
+
 static esp_err_t http_voice_api_key_set(httpd_req_t *req) {
     char body[256];
     const int received = httpd_req_recv(req, body, sizeof(body) - 1);
@@ -535,7 +575,15 @@ static esp_err_t http_voice_api_key_set(httpd_req_t *req) {
     k += 4;
     url_decode(k);
     const esp_err_t err = archery_voice_save_api_key(k);
-    return httpd_resp_sendstr(req, err == ESP_OK ? "API Key 已保存" : "保存失败");
+    if (err != ESP_OK) {
+        archery_voice_set_status("语音配置保存失败");
+        archery_voice_play_config_failed();
+        archery_app_refresh();
+        return httpd_resp_sendstr(req, "保存失败");
+    }
+    archery_voice_set_status("语音已保存");
+    archery_app_refresh();
+    return httpd_resp_sendstr(req, "API Key 已保存");
 }
 
 static esp_err_t http_voice_creds_get(httpd_req_t *req) {

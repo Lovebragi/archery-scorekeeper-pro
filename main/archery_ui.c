@@ -664,7 +664,7 @@ static void render_wifi(lv_obj_t *scr, const archery_flow_t *flow) {
         centered_label(scr, "手机 Wi-Fi 连接热点", ARCHERY_FONT_BODY, C_TEXT, 198);
         centered_label(scr, "Archery-Setup（无需密码）", ARCHERY_FONT_BODY, C_GOLD, 220);
         centered_label(scr, "浏览器打开 192.168.4.1", ARCHERY_FONT_BODY, C_TEXT, 242);
-        centered_label(scr, "可下载训练记录 CSV", ARCHERY_FONT_BODY, C_MUTED, 264);
+        centered_label(scr, archery_voice_status(), ARCHERY_FONT_BODY, C_MUTED, 264);
         add_hint(scr, "确定 停止配网", 292);
         return;
     }
@@ -737,7 +737,7 @@ static void render_wifi(lv_obj_t *scr, const archery_flow_t *flow) {
     lv_obj_t *info = make_label(card, detail, ARCHERY_FONT_BODY, C_MUTED);
     lv_obj_align(info, LV_ALIGN_LEFT_MID, 10, 10);
 
-    static const char *rows[] = {"扫描网络", "手机配网 / 导出", "立即对时", "断开连接", "返回"};
+    static const char *rows[] = {"扫描网络", "手机配网 / 导出", "立即对时", "断开连接", "验证语音"};
     for (uint8_t row = 0; row < 5; row++) {
         const archery_rect_t rect = {20, (int16_t)(88 + row * 34), 200, 30};
         const bool selected = flow->wifi_row == row;

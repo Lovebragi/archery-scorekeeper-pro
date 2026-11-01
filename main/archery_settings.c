@@ -171,12 +171,14 @@ bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delt
         const uint8_t next = settings->voice_enabled ? 0u : 1u;
         if (next == settings->voice_enabled) return false;
         settings->voice_enabled = next;
+        if (next) settings->roll_entry = 0;  // 语音与滚动录入互斥
         return true;
     }
     if (row == 8) {
         const uint8_t next = settings->roll_entry ? 0u : 1u;
         if (next == settings->roll_entry) return false;
         settings->roll_entry = next;
+        if (next) settings->voice_enabled = 0;  // 语音与滚动录入互斥
         return true;
     }
     if (row == 9) {

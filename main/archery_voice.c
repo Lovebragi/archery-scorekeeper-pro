@@ -5,6 +5,7 @@
 #include "archery_countdown_system_pcm.h"
 #include "archery_countdown_bao_pcm.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +40,7 @@ typedef struct {
 } voice_endpoint_t;
 
 static char s_url[VOICE_URL_MAX];
-static char s_status[40] = "长按上键说话";
+static char s_status[96] = "长按上键说话";
 static char s_target_name[8] = "half";
 static uint8_t s_target = 0;
 static uint8_t s_arrows = 6;
@@ -147,6 +148,14 @@ uint8_t archery_voice_context_target(void) { return s_target; }
 uint8_t archery_voice_context_arrows(void) { return s_arrows; }
 const char *archery_voice_appid(void) { return s_appid; }
 const char *archery_voice_api_key(void) { return s_api_key; }
+
+bool archery_voice_test_credentials(void) {
+    if (!archery_voice_has_credentials()) return false;
+    if (s_active) return false;
+    const bool ok = archery_ws_open(s_appid, s_token, s_api_key);
+    if (ok) archery_ws_close();
+    return ok;
+}
 
 esp_err_t archery_voice_save_api_key(const char *api_key) {
     if (!api_key) return ESP_ERR_INVALID_ARG;
@@ -639,6 +648,40 @@ void archery_voice_preview_beep(void) {
     play_tone(1000, 80, 1, 0);
 }
 
+void archery_voice_prepare_audio(void) {
+    if (s_audio_ready) return;
+    if (bsp_audio_init() == ESP_OK && bsp_audio_set_format(16000, 16, 1) == ESP_OK) {
+        s_audio_ready = true;
+    }
+}
+
+void archery_voice_play_saved(void) {
+    if (s_active || s_beep_volume == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) {
+            return;
+        }
+        s_audio_ready = true;
+    }
+    bsp_audio_set_volume(s_beep_volume);
+    play_tone(523, 180, 1, 0);   // C5 do
+    vTaskDelay(pdMS_TO_TICKS(300));
+    play_tone(784, 220, 1, 0);   // G5 sol
+}
+
+void archery_voice_play_config_failed(void) {
+    if (s_active || s_beep_volume == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) {
+            return;
+        }
+        s_audio_ready = true;
+    }
+    bsp_audio_set_volume(s_beep_volume);
+    play_tone(784, 180, 1, 0);   // G5 sol
+    vTaskDelay(pdMS_TO_TICKS(300));
+    play_tone(523, 220, 1, 0);   // C5 do
+}
 void archery_voice_prewarm(void) {
     if (!archery_voice_has_credentials() || archery_ws_connected() || s_active) return;
     xTaskCreate(prewarm_task, "voice_pre", 12288, NULL, 3, NULL);

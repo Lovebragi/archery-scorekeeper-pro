@@ -3,3 +3,5 @@
 
 // 在 BSP 显示/LVGL、NVS 就绪后调用；内部创建按键工作队列与渲染任务。
 void archery_app_start(void);
+// 请求主任务重绘当前页面（可在 Wi-Fi/HTTP 任务中调用）。
+void archery_app_refresh(void);

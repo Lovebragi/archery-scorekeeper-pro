@@ -78,7 +78,8 @@ typedef enum {
     ARCHERY_ACT_WIFI_PROVISION,    // 打开手机扫码配网（设备热点 + 网页）
     ARCHERY_ACT_WIFI_SYNC_TIME,    // 立即用 NTP 对时
     ARCHERY_ACT_WIFI_STOP,         // 断开/停止配网
-    ARCHERY_ACT_WIFI_LEAVE,        // 离开联网页：停止配网热点
+    ARCHERY_ACT_WIFI_LEAVE,
+    ARCHERY_ACT_VOICE_VERIFY,        // 离开联网页：停止配网热点
     ARCHERY_ACT_WIFI_CONNECT_PASSWORD,  // 用设备上输入的密码连接（flow->wifi_password）
     ARCHERY_ACT_TIMER_START,            // 进入计时页：上层启动 1 秒 + 10 秒准备 + 射击倒计时
     ARCHERY_ACT_TIMER_STOP,             // 离开计时页：上层停止计时

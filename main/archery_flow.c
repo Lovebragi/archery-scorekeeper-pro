@@ -265,10 +265,10 @@ static archery_act_t handle_wifi(archery_flow_t *flow, archery_key_t key) {
     if (flow->wifi_mode == 0) {
         switch (key) {
         case ARCHERY_KEY_UP:
-            move_cursor(&flow->wifi_row, -1, 0, 4);
+            move_cursor(&flow->wifi_row, -1, 0, 5);
             break;
         case ARCHERY_KEY_DOWN:
-            move_cursor(&flow->wifi_row, 1, 0, 4);
+            move_cursor(&flow->wifi_row, 1, 0, 5);
             break;
         case ARCHERY_KEY_OK:
             switch (flow->wifi_row) {
@@ -285,6 +285,8 @@ static archery_act_t handle_wifi(archery_flow_t *flow, archery_key_t key) {
                 return ARCHERY_ACT_WIFI_SYNC_TIME;
             case 3:
                 return ARCHERY_ACT_WIFI_STOP;
+            case 4:
+                return ARCHERY_ACT_VOICE_VERIFY;
             default:
                 flow->wifi_mode = 0;
                 flow->wifi_row = 0;

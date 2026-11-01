@@ -52,6 +52,7 @@ typedef enum {
     APP_MSG_HISTORY_FILTER,
     APP_MSG_DIAG,
     APP_MSG_TIMER_TICK,
+    APP_MSG_REFRESH,
 } app_msg_type_t;
 
 typedef struct {
@@ -406,6 +407,12 @@ static void handle_timer_tick(void) {
     }
 }
 
+void archery_app_refresh(void) {
+    if (!s_queue) return;
+    const app_message_t message = {.type = APP_MSG_REFRESH};
+    (void)xQueueSend(s_queue, &message, 0);
+}
+
 static void handle_key(archery_key_t key) {
     const archery_act_t action = archery_flow_handle(&s_flow, key);
     switch (action) {
@@ -508,6 +515,9 @@ static void handle_key(archery_key_t key) {
         break;
     case ARCHERY_ACT_WIFI_LEAVE:
         (void)archery_wifi_stop_provisioning();
+        break;
+    case ARCHERY_ACT_VOICE_VERIFY:
+        archery_wifi_verify_voice_async();
         break;
     case ARCHERY_ACT_NONE:
         break;
@@ -939,6 +949,8 @@ static void worker_task(void *argument) {
                 }
             } else if (message.type == APP_MSG_VOICE_STOP) {
                 archery_voice_stop();
+            } else if (message.type == APP_MSG_REFRESH) {
+                redraw();
             } else if (message.type == APP_MSG_HISTORY_FILTER) {
                 if (archery_flow_history_cycle_filter(&s_flow) ==
                     ARCHERY_ACT_HISTORY_FILTER) {
