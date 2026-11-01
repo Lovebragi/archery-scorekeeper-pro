@@ -627,9 +627,14 @@ static void test_wifi_page(void) {
     archery_flow_set_wifi_scan(&flow, 3);
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.wifi_row == 1);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_WIFI_CONNECT);
-
-    // 列表末行"返回"
+    // 选网先进入密码页
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_NONE);
+    assert(flow.page == ARCHERY_PAGE_WIFI_PASSWORD);
+    assert(flow.wifi_target == 1);
+    // 首位长按返回扫描
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK_LONG) == ARCHERY_ACT_WIFI_SCAN);
+    assert(flow.page == ARCHERY_PAGE_WIFI && flow.wifi_mode == 1);
+    press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.wifi_row == 3);
