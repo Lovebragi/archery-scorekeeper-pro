@@ -87,6 +87,7 @@ static void test_home_and_setup(void) {
 static void test_ring_count_entry(void) {
     archery_flow_t flow;
     archery_flow_init(&flow);
+    flow.settings.record_x = 1;  // 本用例覆盖 X 行
     start_session(&flow, 2, 3);
 
     // 新一组：所有环值计数为 0，累计也从 0 开始
