@@ -487,6 +487,10 @@ static void apply_auto_check_result(bool ok) {
 
 static void auto_check_start(void) {
     if (s_auto_checking) return;
+    if (!archery_voice_has_credentials()) {
+        apply_auto_check_result(false);
+        return;
+    }
     s_auto_checking = true;
     s_flow.auto_check_done = 0;
     s_auto_check_started_us = esp_timer_get_time();

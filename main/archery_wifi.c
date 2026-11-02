@@ -90,7 +90,10 @@ static bool s_save_pending;
 void archery_wifi_set_save_enabled(bool enabled) { s_save_enabled = enabled; }
 bool archery_wifi_save_enabled(void) { return s_save_enabled; }
 
-void archery_wifi_set_auto_reconnect(bool enabled) { s_auto_reconnect = enabled; }
+void archery_wifi_set_auto_reconnect(bool enabled) {
+    s_auto_reconnect = enabled;
+    if (!enabled) archery_wifi_retry_cancel();
+}
 bool archery_wifi_auto_reconnect_enabled(void) { return s_auto_reconnect; }
 
 void archery_wifi_forget_credentials(void) {
@@ -913,8 +916,15 @@ esp_err_t archery_wifi_stop_provisioning(void) {
         s_httpd = NULL;
     }
     s_provisioning = false;
-    if (!s_connected) {
-        esp_wifi_set_mode(WIFI_MODE_STA);
+    // 无论 STA 是否已连接，退出配网都必须关闭 AP，否则热点会继续发射。
+    if (s_inited) {
+        const bool was_connected = s_connected;
+        wifi_mode_t mode = WIFI_MODE_NULL;
+        if (esp_wifi_get_mode(&mode) == ESP_OK && mode != WIFI_MODE_STA) {
+            (void)esp_wifi_set_mode(WIFI_MODE_STA);
+        }
+        // 切模式可能重启 Wi-Fi，之前已连接的 STA 需要主动恢复。
+        if (was_connected) (void)esp_wifi_connect();
     }
     s_view.state = s_connected ? ARCHERY_WIFI_CONNECTED : ARCHERY_WIFI_IDLE;
     notify();

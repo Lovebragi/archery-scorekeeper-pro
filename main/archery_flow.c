@@ -216,7 +216,7 @@ static archery_act_t handle_beta(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_KEY_OK_LONG:
         flow->settings_row = 11;
         flow->page = ARCHERY_PAGE_SETTINGS;
-        break;
+        return ARCHERY_ACT_SETTINGS_SAVE;
     }
     return ARCHERY_ACT_NONE;
 }
