@@ -703,16 +703,10 @@ void archery_voice_metronome_bao_bar(uint8_t number, uint8_t volume_percent) {
     unsigned samples = 0;
     const int16_t *clip = bao_clip(number, &samples);
     if (!clip || samples == 0) return;
-    enum { BAR_MAX = 6720 };  // 420 ms，120 BPM 内不拖到下一拍
-    static int16_t buffer[BAR_MAX];
-    const unsigned count = samples < BAR_MAX ? samples : BAR_MAX;
-    for (unsigned i = 0; i < count; i++) buffer[i] = clip[i];
-    const unsigned fade = 80;
-    for (unsigned i = 0; i < fade && i < count; i++) {
-        buffer[count - 1u - i] = (int16_t)((int32_t)buffer[count - 1u - i] * (int32_t)i / (int32_t)fade);
-    }
+    // 420 ms，120 BPM 内不拖到下一拍；直接播放，避免常驻 13 KB 静态缓冲。
+    const unsigned count = samples < 6720u ? samples : 6720u;
     bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
-    (void)bsp_audio_write(buffer, (size_t)count * sizeof(buffer[0]));
+    (void)bsp_audio_write(clip, (size_t)count * sizeof(clip[0]));
 }
 
 void archery_voice_cat_meow(uint8_t volume_percent) {

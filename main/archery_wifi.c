@@ -84,9 +84,6 @@ static bool s_save_enabled = true;
 static bool s_auto_reconnect = true;
 static volatile bool s_retry_cancel;
 static volatile bool s_retry_in_connect;
-static volatile bool s_ap_stopping;
-static volatile bool s_sta_resuming;
-static volatile bool s_resume_cancel;
 static char s_connect_pass[ARCHERY_WIFI_PASS_SIZE];
 static bool s_save_pending;
 
@@ -119,29 +116,10 @@ static void save_credentials(const char *ssid, const char *pass) {
     nvs_close(handle);
 }
 
-static bool sta_really_associated(void) {
-    wifi_ap_record_t ap;
-    return esp_wifi_sta_get_ap_info(&ap) == ESP_OK;
-}
-
-bool archery_wifi_resume_pending(void) {
-    return s_ap_stopping || s_sta_resuming;
-}
-
-static void cancel_sta_resume(void) {
-    s_resume_cancel = true;
-    s_sta_resuming = false;
-}
-
 // ---------------------------------------------------------------- 事件回调
 static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data) {
     (void)arg;
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_ap_stopping || s_sta_resuming) {
-            // 配网停止/STA 恢复期间由恢复任务统一处理，避免事件覆盖状态。
-            notify();
-            return;
-        }
         s_connected = false;
         s_ip[0] = '\0';
         s_view.sta_connected = false;
@@ -165,7 +143,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
         s_view.ip[sizeof(s_view.ip) - 1] = '\0';
         s_view.sta_connected = true;
         s_view.state = ARCHERY_WIFI_CONNECTED;
-        s_sta_resuming = false;
         s_save_pending = true;
         set_message("已连接，可立即对时");
         notify();
@@ -222,7 +199,6 @@ static void scan_task(void *arg) {
 esp_err_t archery_wifi_scan(void) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     archery_wifi_retry_cancel();
-    cancel_sta_resume();
     if (s_view.state == ARCHERY_WIFI_SCANNING) return ESP_OK;
     if (s_view.state == ARCHERY_WIFI_CONNECTING) (void)esp_wifi_disconnect();
     if (xTaskCreate(scan_task, "wifi_scan", 4096, NULL, 4, NULL) != pdPASS) {
@@ -234,17 +210,13 @@ esp_err_t archery_wifi_scan(void) {
 // ---------------------------------------------------------------- 连接
 esp_err_t archery_wifi_connect(const char *ssid, const char *password) {
     if (!s_inited || !ssid || !ssid[0]) return ESP_ERR_INVALID_ARG;
-    if (!s_retry_in_connect) {
-        s_retry_cancel = true;
-        cancel_sta_resume();
-    }
+    if (!s_retry_in_connect) s_retry_cancel = true;
     s_auto_reconnect = true;
     strncpy(s_connect_pass, password ? password : "", sizeof(s_connect_pass) - 1);
     s_connect_pass[sizeof(s_connect_pass) - 1] = '\0';
 
-    if (s_provisioning) {
-        archery_wifi_stop_provisioning();
-    }
+    // 配网时先保持 AP，等 provision_connect_task 确认拿到 IP 后再关闭，
+    // 否则手机页面会因为 AP 消失而显示“连接失败”。
     s_view.state = ARCHERY_WIFI_CONNECTING;
     copy_ssid(s_sta_ssid, ssid);
     copy_ssid(s_view.ssid[0], ssid);
@@ -339,7 +311,6 @@ esp_err_t archery_wifi_reconnect(void) {
 esp_err_t archery_wifi_disconnect(void) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     archery_wifi_retry_cancel();
-    cancel_sta_resume();
     s_auto_reconnect = false;
     esp_wifi_disconnect();
     s_connected = false;
@@ -541,6 +512,12 @@ static void provision_connect_task(void *arg) {
         pass = sep + 1;
     }
     archery_wifi_connect(payload, pass);
+    // 等 STA 真正拿到 IP，让手机页面能先看到“已连接”，再关闭配网 AP。
+    for (int i = 0; i < 100 && !s_connected; i++) vTaskDelay(pdMS_TO_TICKS(100));
+    if (s_connected) {
+        vTaskDelay(pdMS_TO_TICKS(1500));
+        archery_wifi_stop_provisioning();
+    }
     free(payload);
     vTaskDelete(NULL);
 }
@@ -574,9 +551,13 @@ static esp_err_t http_connect(httpd_req_t *req) {
     // 密码留空时优先用已保存的密码，省去重复输入。
     if (pass[0] == '\0' && s_save_enabled) {
         char saved[64];
-        if (archery_wifi_store_lookup(ssid, saved, sizeof(saved))) {
+        if (archery_wifi_store_lookup(ssid, saved, sizeof(saved)) && saved[0] != '\0') {
             strncpy(pass, saved, sizeof(pass) - 1);
         }
+    }
+    if (pass[0] == '\0') {
+        httpd_resp_set_type(req, "text/plain; charset=utf-8");
+        return httpd_resp_sendstr(req, "请输入 Wi-Fi 密码");
     }
 
     httpd_resp_set_type(req, "text/plain; charset=utf-8");
@@ -720,12 +701,16 @@ static esp_err_t http_voice_creds_set(httpd_req_t *req) {
     return httpd_resp_sendstr(req, "已保存直连凭据");
 }
 
-static esp_err_t http_redirect(httpd_req_t *req) {
-    (void)req;
-    httpd_resp_set_status(req, "302 Found");
-    httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/");
-    httpd_resp_set_type(req, "text/plain");
-    return httpd_resp_sendstr(req, "redirect");
+static esp_err_t http_probe(httpd_req_t *req) {
+    // 让 iOS/Android 认为当前 Wi-Fi 可用，避免系统自动切回蜂窝网络。
+    // 配网页仍由用户手动打开 http://192.168.4.1/。
+    if (strcmp(req->uri, "/generate_204") == 0) {
+        httpd_resp_set_status(req, "204 No Content");
+        return httpd_resp_send(req, NULL, 0);
+    }
+    httpd_resp_set_type(req, "text/html");
+    return httpd_resp_sendstr(req,
+        "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
 }
 
 static esp_err_t http_index(httpd_req_t *req) {
@@ -785,7 +770,7 @@ static esp_err_t http_device_name_set(httpd_req_t *req) {
 
 static void start_httpd(void) {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.max_uri_handlers = 16;
+    config.max_uri_handlers = 24;
     config.stack_size = 6144;
     if (httpd_start(&s_httpd, &config) != ESP_OK) {
         ESP_LOGE(TAG, "HTTP 服务器启动失败");
@@ -830,10 +815,11 @@ static void start_httpd(void) {
     httpd_register_uri_handler(s_httpd, &api_key_uri);
     // iOS/Android 的联网探测：跳转到配网页，手机才会自动弹出登录页。
     static const char *probe_paths[] = {"/hotspot-detect.html", "/generate_204",
-                                        "/connecttest.txt", "/ncsi.txt"};
+                                        "/connecttest.txt", "/ncsi.txt",
+                                        "/library/test/success.html"};
     for (size_t i = 0; i < sizeof(probe_paths) / sizeof(probe_paths[0]); i++) {
         httpd_uri_t probe = {.uri = probe_paths[i], .method = HTTP_GET,
-                             .handler = http_redirect};
+                             .handler = http_probe};
         httpd_register_uri_handler(s_httpd, &probe);
     }
 }
@@ -897,7 +883,6 @@ static void dns_task(void *arg) {
 esp_err_t archery_wifi_start_provisioning(const char *preset_ssid) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     archery_wifi_retry_cancel();
-    cancel_sta_resume();
     if (s_provisioning) return ESP_OK;
 
     // 先在 STA 模式扫描一次；热点与扫描同时进行会打断手机连接。
@@ -909,6 +894,8 @@ esp_err_t archery_wifi_start_provisioning(const char *preset_ssid) {
     }
     set_message("手机扫码配网");
 
+    // 配网期间使用 AP+STA，但保持 STA 断开：纯 AP 模式无法扫描 Wi-Fi。
+    (void)esp_wifi_disconnect();
     esp_wifi_set_mode(WIFI_MODE_APSTA);
     wifi_config_t ap = {0};
     strncpy((char *)ap.ap.ssid, PROV_AP_SSID, sizeof(ap.ap.ssid) - 1);
@@ -933,46 +920,8 @@ esp_err_t archery_wifi_start_provisioning(const char *preset_ssid) {
     return ESP_OK;
 }
 
-static void sta_resume_task(void *arg) {
-    (void)arg;
-    bool ok = false;
-    for (int attempt = 0; attempt < 3 && !s_resume_cancel; attempt++) {
-        vTaskDelay(pdMS_TO_TICKS(300));
-        if (s_resume_cancel) break;
-        if (sta_really_associated()) { ok = true; break; }
-        (void)esp_wifi_connect();
-        for (int tick = 0; tick < 20 && !s_resume_cancel; tick++) {
-            vTaskDelay(pdMS_TO_TICKS(100));
-            if (sta_really_associated()) { ok = true; break; }
-        }
-        if (ok) break;
-    }
-    if (s_resume_cancel) {
-        // 用户已手动接管，保持当前状态。
-    } else if (ok) {
-        if (s_connected) s_view.state = ARCHERY_WIFI_CONNECTED;
-        set_message("已恢复连接");
-    } else {
-        s_connected = false;
-        s_view.sta_connected = false;
-        s_ip[0] = '\0';
-        s_view.ip[0] = '\0';
-        s_view.state = ARCHERY_WIFI_IDLE;
-        set_message("恢复连接失败");
-    }
-    s_sta_resuming = false;
-    notify();
-    vTaskDelete(NULL);
-}
-
 esp_err_t archery_wifi_stop_provisioning(void) {
     if (!s_provisioning) return ESP_OK;
-
-    // 先进入“停止中”，抑制事件回调的普通断线分支，并取消自动重连。
-    s_ap_stopping = true;
-    archery_wifi_retry_cancel();
-    const bool was_associated = sta_really_associated();
-
     s_dns_run = false;
     if (s_dns_task) {
         vTaskDelay(pdMS_TO_TICKS(1200));
@@ -983,40 +932,17 @@ esp_err_t archery_wifi_stop_provisioning(void) {
         s_httpd = NULL;
     }
     s_provisioning = false;
-
-    if (!s_inited) {
-        s_ap_stopping = false;
-        notify();
-        return ESP_OK;
-    }
-
-    wifi_mode_t mode = WIFI_MODE_NULL;
-    esp_err_t err = esp_wifi_get_mode(&mode);
-    if (err == ESP_OK && mode != WIFI_MODE_STA) {
-        err = esp_wifi_set_mode(WIFI_MODE_STA);
-    }
-    if (err != ESP_OK) {
-        s_ap_stopping = false;
-        s_view.state = ARCHERY_WIFI_FAILED;
-        set_message("关闭热点失败");
-        notify();
-        return err;
-    }
-
-    if (was_associated) {
-        s_sta_resuming = true;
-        s_resume_cancel = false;
-        s_view.state = ARCHERY_WIFI_CONNECTING;
-        set_message("正在恢复连接…");
-        if (xTaskCreate(sta_resume_task, "wifi_resume", 4096, NULL, 3, NULL) != pdPASS) {
-            s_sta_resuming = false;
-            (void)esp_wifi_connect();
+    // 无论 STA 是否已连接，退出配网都必须关闭 AP，否则热点会继续发射。
+    if (s_inited) {
+        const bool was_connected = s_connected;
+        wifi_mode_t mode = WIFI_MODE_NULL;
+        if (esp_wifi_get_mode(&mode) == ESP_OK && mode != WIFI_MODE_STA) {
+            (void)esp_wifi_set_mode(WIFI_MODE_STA);
         }
-    } else {
-        s_view.state = ARCHERY_WIFI_IDLE;
-        set_message("已断开");
+        // 切模式可能重启 Wi-Fi，之前已连接的 STA 需要主动恢复。
+        if (was_connected) (void)esp_wifi_connect();
     }
-    s_ap_stopping = false;
+    s_view.state = s_connected ? ARCHERY_WIFI_CONNECTED : ARCHERY_WIFI_IDLE;
     notify();
     ESP_LOGI(TAG, "配网热点已关闭");
     return ESP_OK;
@@ -1076,3 +1002,7 @@ void archery_wifi_fill_view(archery_wifi_view_t *view) {
     strncpy(view->ip, s_ip, sizeof(view->ip) - 1);
     view->ip[sizeof(view->ip) - 1] = '\0';
 }
+
+
+// Compatibility with newer app code; 1.5.0 has no STA resume task.
+bool archery_wifi_resume_pending(void) { return false; }
