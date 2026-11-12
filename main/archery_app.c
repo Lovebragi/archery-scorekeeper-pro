@@ -242,7 +242,7 @@ static bool try_saved_wifi(archery_key_t key) {
     ESP_LOGI(TAG, "saved wifi row=%u found=%d passlen=%u", (unsigned)row,
              (int)found, (unsigned)strlen(pass));
     if (!found) return false;
-    if (pass[0] == ' ') {
+    if (pass[0] == 0) {
         // 旧记录可能保存了空密码（安全网络无法用空密码连接），直接让用户重输。
         s_flow.page = ARCHERY_PAGE_WIFI_PASSWORD;
         s_flow.wifi_mode = 1;
@@ -499,6 +499,7 @@ static void metro_stop(void) {
         .stop_min = s_flow.metro_stop_min,
         .volume = s_flow.metro_volume,
         .preset = s_flow.metro_preset,
+        .count_voice = s_flow.metro_count_voice,
     };
     (void)archery_metro_save(&cfg);
     (void)archery_settings_save(&s_flow.settings);
@@ -540,9 +541,24 @@ static void metro_tick(void) {
         archery_voice_metronome_click(accent, (uint8_t)(s_flow.settings.beep_volume * 20u));
     } else {
         const uint32_t music_tick = s_metro_tick_count - countin - 1u;
-        const uint8_t beat = (uint8_t)(music_tick % (s_flow.metro_accent ? s_flow.metro_accent : 4u) + 1u);
+        const uint8_t accent = s_flow.metro_accent ? s_flow.metro_accent : 4u;
+        const uint8_t beat = (uint8_t)(music_tick % accent + 1u);
         s_flow.metro_beat = beat;
-        archery_voice_metronome_click(beat == 1u, (uint8_t)(s_flow.settings.beep_volume * 20u));
+        const uint8_t volume = (uint8_t)(s_flow.settings.beep_volume * 20u);
+        if (s_flow.metro_count_voice) {
+            if (beat == 1u) {
+                const uint8_t bar = (uint8_t)((music_tick / accent) % 4u + 1u);
+                if (s_flow.metro_count_voice == 2u) {
+                    archery_voice_metronome_bao_bar(bar, volume);
+                } else {
+                    archery_voice_metronome_bar(bar, volume);
+                }
+            } else {
+                archery_voice_metronome_click(false, volume);
+            }
+        } else {
+            archery_voice_metronome_click(beat == 1u, volume);
+        }
     }
     if (s_flow.metro_stop_min > 0 && s_metro_start_us > 0 &&
         esp_timer_get_time() - s_metro_start_us >=
@@ -649,10 +665,16 @@ static void handle_key(archery_key_t key) {
         apply_settings(&s_flow.settings);
         if (s_flow.settings_row == ARCHERY_SETTINGS_ROW_BEEP_VOLUME) {
             archery_voice_preview_beep();
-        } else if (s_flow.page == ARCHERY_PAGE_METRONOME && s_flow.metro_row == 4u) {
+        } else if (s_flow.page == ARCHERY_PAGE_METRONOME && (s_flow.metro_row == 4u || s_flow.metro_row == 7u)) {
             if (!s_flow.metro_running) {
-                archery_voice_metronome_click(true,
-                    (uint8_t)(s_flow.settings.beep_volume * 20u));
+                if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 2u) {
+                    archery_voice_metronome_bao_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
+                } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 1u) {
+                    archery_voice_metronome_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
+                } else {
+                    archery_voice_metronome_click(
+                        true, (uint8_t)(s_flow.settings.beep_volume * 20u));
+                }
             }
         }
         break;
@@ -1433,6 +1455,7 @@ void archery_app_start(void) {
         s_flow.metro_stop_min = metro_cfg.stop_min;
         s_flow.metro_volume = metro_cfg.volume;
         s_flow.metro_preset = metro_cfg.preset;
+        s_flow.metro_count_voice = metro_cfg.count_voice;
     }
     ESP_LOGI(TAG, "%s %s", ARCHERY_FIRMWARE_CHANNEL, ARCHERY_FIRMWARE_VERSION);
 

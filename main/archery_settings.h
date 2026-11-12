@@ -51,7 +51,7 @@ typedef struct {
     uint8_t beep_volume;   // 提示音音量档位，对应 0/20/40/60/80/100（0 = 静音）
     uint8_t wifi_save;     // 1 = 保存 Wi-Fi 密码（默认），0 = 不保存
     uint8_t timer_seconds; // 0 = 不计时，否则 20/30/40 秒/支
-    uint8_t countdown_voice; // 0 = 关闭，1 = 系统女声，2 = 小豆女声，3 = 豆包女声（默认）
+    uint8_t countdown_voice; // 0 = 关闭，1 = 系统女声，2 = 小豆女声，3 = 豆包女声（默认），4 = 男声
     uint8_t roll_entry;      // 1 = 录入页长按上/下连续加减，短按无效
     uint8_t auto_mode;       // 1 = 开始训练前自动检测语音并选择录入方式
     uint8_t auto_reconnect;  // 1 = 断线后自动重连已保存网络

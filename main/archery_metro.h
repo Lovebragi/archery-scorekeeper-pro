@@ -11,6 +11,7 @@ typedef struct {
     uint8_t stop_min;
     uint8_t volume;
     uint8_t preset;
+    uint8_t count_voice;
 } archery_metro_config_t;
 
 void archery_metro_defaults(archery_metro_config_t *config);

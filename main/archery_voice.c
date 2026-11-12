@@ -4,8 +4,9 @@
 #include "archery_countdown_pcm.h"
 #include "archery_countdown_system_pcm.h"
 #include "archery_countdown_bao_pcm.h"
+#include "archery_countdown_male_pcm.h"
+#include "archery_bar_voice_pcm.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -554,7 +555,7 @@ static void prewarm_task(void *arg) {
     vTaskDelete(NULL);
 }
 
-void archery_voice_set_countdown_voice(uint8_t mode) { s_countdown_mode = mode > 3 ? 3 : mode; }
+void archery_voice_set_countdown_voice(uint8_t mode) { s_countdown_mode = mode > 4 ? 4 : mode; }
 
 void archery_voice_set_beep_volume(uint8_t percent) {
     s_beep_volume = percent > 100 ? 100 : percent;
@@ -615,7 +616,8 @@ void archery_voice_play_countdown(uint8_t number) {
     const int16_t *clip = NULL;
     if (s_countdown_mode == 1) clip = system_clip(number, &samples);
     else if (s_countdown_mode == 2) clip = countdown_clip(number, &samples);
-    else clip = bao_clip(number, &samples);
+    else if (s_countdown_mode == 3) clip = bao_clip(number, &samples);
+    else clip = archery_countdown_male_clip(number, &samples);
     if (!clip || samples == 0) return;
     if (!s_audio_ready) {
         if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) {
@@ -644,6 +646,40 @@ void archery_voice_metronome_click(bool accent, uint8_t volume_percent) {
         if (++phase >= samples * 2) phase = 0;
     }
     (void)bsp_audio_write(buffer, sizeof(buffer));
+}
+
+void archery_voice_metronome_bar(uint8_t number, uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    unsigned samples = 0;
+    const int16_t *clip = archery_bar_voice_clip(number, &samples);
+    if (!clip || samples == 0) return;
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(clip, (size_t)samples * sizeof(clip[0]));
+}
+
+void archery_voice_metronome_bao_bar(uint8_t number, uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    unsigned samples = 0;
+    const int16_t *clip = bao_clip(number, &samples);
+    if (!clip || samples == 0) return;
+    enum { BAR_MAX = 6720 };  // 420 ms，120 BPM 内不拖到下一拍
+    static int16_t buffer[BAR_MAX];
+    const unsigned count = samples < BAR_MAX ? samples : BAR_MAX;
+    for (unsigned i = 0; i < count; i++) buffer[i] = clip[i];
+    const unsigned fade = 80;
+    for (unsigned i = 0; i < fade && i < count; i++) {
+        buffer[count - 1u - i] = (int16_t)((int32_t)buffer[count - 1u - i] * (int32_t)i / (int32_t)fade);
+    }
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(buffer, (size_t)count * sizeof(buffer[0]));
 }
 
 void archery_voice_beep_warning(void) {

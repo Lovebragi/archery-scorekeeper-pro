@@ -158,6 +158,7 @@ typedef struct {
     uint8_t metro_stop_min;
     uint8_t metro_volume;
     uint8_t metro_preset;
+    uint8_t metro_count_voice;
     uint8_t range_row;
     uint8_t range_edit;
     uint8_t range_target;

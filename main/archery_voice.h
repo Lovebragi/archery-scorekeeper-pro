@@ -72,6 +72,8 @@ void archery_voice_beep_warning(void);
 // 播报倒计时数字（10..1），音频为预生成的豆包语音片段。
 void archery_voice_play_countdown(uint8_t number);
 void archery_voice_metronome_click(bool accent, uint8_t volume_percent);
+void archery_voice_metronome_bar(uint8_t number, uint8_t volume_percent);
+void archery_voice_metronome_bao_bar(uint8_t number, uint8_t volume_percent);
 
 // 识别完成的结果（消费一次）。
 bool archery_voice_take_result(archery_voice_result_t *out);

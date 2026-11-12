@@ -110,7 +110,7 @@ bool archery_settings_valid(const archery_settings_t *settings) {
            off_index(settings->off_seconds) >= 0 &&
            settings->record_x <= 1u && settings->voice_enabled <= 1u &&
            settings->beep_volume < 6u && settings->wifi_save <= 1u && settings->roll_entry <= 1u && settings->auto_mode <= 1u && settings->auto_reconnect <= 1u &&
-           settings->countdown_voice <= 3u &&
+           settings->countdown_voice <= 4u &&
            (settings->timer_seconds == 0u || settings->timer_seconds == 20u ||
             settings->timer_seconds == 30u || settings->timer_seconds == 40u);
 }
@@ -174,7 +174,7 @@ bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delt
         return true;
     }
     if (row == 6) {
-        const uint8_t next = (uint8_t)((settings->countdown_voice + 1u) % 4u);
+        const uint8_t next = (uint8_t)((settings->countdown_voice + 1u) % 5u);
         settings->countdown_voice = next;
         return true;
     }

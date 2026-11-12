@@ -111,6 +111,8 @@ static void test_adjust(void) {
     // 倒数十秒语音：豆包 -> 关 -> 系统 -> 小豆 -> 豆包
     assert(settings.countdown_voice == 3);
     assert(archery_settings_adjust(&settings, 6, 1));
+    assert(settings.countdown_voice == 4);
+    assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.countdown_voice == 0);
     assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.countdown_voice == 1);

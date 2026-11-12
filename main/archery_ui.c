@@ -432,13 +432,13 @@ static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
         centered_label(scr, "已停止", ARCHERY_FONT_BODY, C_MUTED, 64);
     }
 
-    static const char *names[] = {"开始/停止", "BPM", "重音", "预备拍", "音量", "自动停止", "预设"};
+    static const char *names[] = {"开始/停止", "BPM", "重音", "预备拍", "音量", "自动停止", "预设", "数拍"};
     char value[24];
-    const uint8_t visible = 7;
-    const uint8_t offset = 0;  // 7 行完整显示，无需滚动
+    const uint8_t visible = 8;
+    const uint8_t offset = 0;  // 8 行完整显示，无需滚动
     for (uint8_t i = 0; i < visible; i++) {
         const uint8_t row = (uint8_t)(offset + i);
-        const archery_rect_t rect = {20, (int16_t)(84 + i * 28), 200, 26};
+        const archery_rect_t rect = {20, (int16_t)(72 + i * 26), 200, 24};
         const bool selected = flow->metro_row == row;
         const bool editing = selected && flow->metro_edit && row != 0u;
         lv_obj_t *card = make_card(scr, rect, selected, false);
@@ -461,11 +461,14 @@ static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
             if (flow->metro_stop_min == 0) snprintf(value, sizeof(value), "关");
             else snprintf(value, sizeof(value), "%u 分钟", (unsigned)flow->metro_stop_min);
             break;
-        default: {
+        case 6: {
             static const char *presets[] = {"自定义", "慢速 40", "基础 60", "快速 90"};
             snprintf(value, sizeof(value), "%s", presets[flow->metro_preset]);
             break;
         }
+        default:
+            snprintf(value, sizeof(value), "%s", flow->metro_count_voice == 1u ? "男声" : (flow->metro_count_voice == 2u ? "豆包" : "click"));
+            break;
         }
         lv_obj_t *val = make_label(card, value,
                                    editing ? ARCHERY_FONT_TITLE : ARCHERY_FONT_BODY,
@@ -1218,9 +1221,9 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
                          (unsigned)flow->settings.timer_seconds);
             }
         } else if (row == 6) {
-            static const char *const voicing[] = {"关", "系统", "小豆", "豆包"};
+            static const char *const voicing[] = {"关", "系统", "小豆", "豆包", "男声"};
             snprintf(value, sizeof(value), "%s",
-                     voicing[flow->settings.countdown_voice <= 3u
+                     voicing[flow->settings.countdown_voice <= 4u
                                  ? flow->settings.countdown_voice : 0u]);
         } else if (row == 7) {
             snprintf(value, sizeof(value), "%s",

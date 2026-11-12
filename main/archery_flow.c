@@ -578,8 +578,8 @@ static archery_act_t handle_metronome(archery_flow_t *flow, archery_key_t key) {
         const int delta = key == ARCHERY_KEY_UP ? 1 : -1;
         if (!flow->metro_edit) {
             int row = (int)flow->metro_row + (key == ARCHERY_KEY_UP ? -1 : 1);
-            if (row < 0) row = 6;
-            if (row > 6) row = 0;
+            if (row < 0) row = 7;
+            if (row > 7) row = 0;
             flow->metro_row = (uint8_t)row;
             break;
         }
@@ -630,6 +630,9 @@ static archery_act_t handle_metronome(archery_flow_t *flow, archery_key_t key) {
             if (p >= 1 && p <= 3) flow->metro_bpm = preset_bpm[p - 1u];
             break;
         }
+        case 7:
+            flow->metro_count_voice = (uint8_t)((flow->metro_count_voice + 1u) % 3u);
+            return ARCHERY_ACT_SETTINGS_CHANGED;
         default:
             break;
         }

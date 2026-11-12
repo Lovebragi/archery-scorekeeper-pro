@@ -20,6 +20,7 @@ void archery_metro_defaults(archery_metro_config_t *config) {
     config->stop_min = 0;
     config->volume = 100;
     config->preset = 0;
+    config->count_voice = 0;
 }
 
 bool archery_metro_load(archery_metro_config_t *config) {
@@ -44,6 +45,7 @@ bool archery_metro_load(archery_metro_config_t *config) {
     config->stop_min = buffer[6];
     config->volume = buffer[7];
     config->preset = buffer[8];
+    config->count_voice = buffer[9] < 3u ? buffer[9] : 0u;
     if (config->bpm < 30 || config->bpm > 240) config->bpm = 60;
     if (config->accent < 1 || config->accent > 16) config->accent = 4;
     if (config->countin > 8) config->countin = 0;
@@ -67,6 +69,7 @@ bool archery_metro_save(const archery_metro_config_t *config) {
     buffer[6] = config->stop_min;
     buffer[7] = config->volume;
     buffer[8] = config->preset;
+    buffer[9] = config->count_voice;
     nvs_handle_t handle;
     if (nvs_open(METRO_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
     esp_err_t err = nvs_set_blob(handle, METRO_KEY, buffer, sizeof(buffer));
