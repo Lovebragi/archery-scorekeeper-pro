@@ -419,17 +419,17 @@ static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "节拍器");
     char line[48];
     snprintf(line, sizeof(line), "%u BPM", (unsigned)flow->metro_bpm);
-    centered_label(scr, line, ARCHERY_FONT_TITLE, C_GOLD, 38);
+    centered_label(scr, line, ARCHERY_FONT_TITLE, C_GOLD, 32);
     if (flow->metro_running) {
         if (flow->metro_beat == 0) {
-            centered_label(scr, "预备", ARCHERY_FONT_BODY, C_MUTED, 64);
+            centered_label(scr, "预备", ARCHERY_FONT_BODY, C_MUTED, 58);
         } else {
             snprintf(line, sizeof(line), "第 %u / %u 拍", (unsigned)flow->metro_beat,
                      (unsigned)flow->metro_accent);
-            centered_label(scr, line, ARCHERY_FONT_BODY, C_TEXT, 64);
+            centered_label(scr, line, ARCHERY_FONT_BODY, C_TEXT, 58);
         }
     } else {
-        centered_label(scr, "已停止", ARCHERY_FONT_BODY, C_MUTED, 64);
+        centered_label(scr, "已停止", ARCHERY_FONT_BODY, C_MUTED, 58);
     }
 
     static const char *names[] = {"开始/停止", "BPM", "重音", "预备拍", "音量", "自动停止", "预设", "数拍"};
@@ -438,7 +438,7 @@ static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
     const uint8_t offset = 0;  // 8 行完整显示，无需滚动
     for (uint8_t i = 0; i < visible; i++) {
         const uint8_t row = (uint8_t)(offset + i);
-        const archery_rect_t rect = {20, (int16_t)(72 + i * 26), 200, 24};
+        const archery_rect_t rect = {20, (int16_t)(80 + i * 24), 200, 24};
         const bool selected = flow->metro_row == row;
         const bool editing = selected && flow->metro_edit && row != 0u;
         lv_obj_t *card = make_card(scr, rect, selected, false);
@@ -476,7 +476,7 @@ static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
         lv_obj_align(val, LV_ALIGN_RIGHT_MID, -10, 0);
     }
     add_hint(scr, flow->metro_edit ? "上/下 调值 · 确定 完成"
-                                   : "上/下 选择 · 长按确定 退出", 286);
+                                   : "上/下 选择 · 长按确定 退出", 284);
 }
 
 static void rangefinder_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color) {
