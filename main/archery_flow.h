@@ -7,6 +7,7 @@
 #include "archery_clock.h"
 #include "archery_session.h"
 #include "archery_settings.h"
+#include "archery_sight.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -29,10 +30,18 @@ typedef enum {
     ARCHERY_PAGE_TIMER,
     ARCHERY_PAGE_AUTO_CHECK,
     ARCHERY_PAGE_BETA,
+    ARCHERY_PAGE_SIGHT,
+    ARCHERY_PAGE_TOOLS,
+    ARCHERY_PAGE_RULER,
+    ARCHERY_PAGE_SIGHT_CALC,
+    ARCHERY_PAGE_METRONOME,
+    ARCHERY_PAGE_RANGE_INTRO,
+    ARCHERY_PAGE_RANGE_CONFIG,
+    ARCHERY_PAGE_RANGE_VIEW,
 } archery_page_t;
 
 // 主页入口数：开始训练 / 历史记录 / 设置 / 联网。
-#define ARCHERY_HOME_ITEMS 5u
+#define ARCHERY_HOME_ITEMS 6u
 
 // 录入页行数上限：最多 12 个环值槽位 + 1 行"确认提交"。
 #define ARCHERY_ENTRY_ROWS_MAX (ARCHERY_RING_SLOT_MAX + 1u)
@@ -82,6 +91,9 @@ typedef enum {
     ARCHERY_ACT_WIFI_STOP,         // 断开/停止配网
     ARCHERY_ACT_WIFI_LEAVE,
     ARCHERY_ACT_AUTO_CHECK,
+    ARCHERY_ACT_SIGHT_SAVE,
+    ARCHERY_ACT_METRONOME_TOGGLE,
+    ARCHERY_ACT_METRONOME_STOP,
     ARCHERY_ACT_VOICE_VERIFY,        // 离开联网页：停止配网热点
     ARCHERY_ACT_WIFI_CONNECT_PASSWORD,  // 用设备上输入的密码连接（flow->wifi_password）
     ARCHERY_ACT_TIMER_START,            // 进入计时页：上层启动 1 秒 + 10 秒准备 + 射击倒计时
@@ -96,7 +108,7 @@ typedef struct {
     uint8_t setup_arrows;   // 每组箭数，默认 6
     uint8_t setup_row;      // 0 = 组数, 1 = 每组箭数, 2..4 = 上/中/下, 最后 = 开始
     uint8_t setup_face[ARCHERY_FACES];  // 三联靶上/中/下各几根箭
-    uint8_t home_select;    // 0 = 开始训练, 1 = 历史记录, 2 = 日期时间, 3 = 设置, 4 = 联网
+    uint8_t home_select;    // 0 训练, 1 历史, 2 时间, 3 设置, 4 联网, 5 射箭工具
     uint16_t history_count; // 由上层同步：当前筛选下的记录数
     uint8_t diag_row;
     uint8_t diag_log_row;
@@ -129,6 +141,30 @@ typedef struct {
     uint8_t auto_check_ok;    // 自动训练检测结果
     uint8_t auto_check_done;
     uint8_t beta_row;
+    uint8_t tools_row;
+    uint8_t sight_row;
+    uint8_t sight_editing;
+    uint8_t sight_edit_field;  // 0 无, 1 刻度, 2 距离
+    int16_t ruler_offset;
+    uint16_t calc_distance;
+    uint8_t calc_mode;
+    uint8_t metro_row;
+    uint8_t metro_edit;
+    uint8_t metro_running;
+    uint8_t metro_beat;
+    uint16_t metro_bpm;
+    uint8_t metro_accent;
+    uint8_t metro_countin;
+    uint8_t metro_stop_min;
+    uint8_t metro_volume;
+    uint8_t metro_preset;
+    uint8_t range_row;
+    uint8_t range_edit;
+    uint8_t range_target;
+    uint8_t range_mode;
+    uint8_t range_eye_cm;
+    uint8_t range_distance_m;
+    archery_sight_t sight;
     uint8_t wifi_secure_mask;  // 扫描结果里哪些是加密网络（bit0 = 第 1 个）
     uint8_t wifi_target;    // 正在输入密码的网络下标
     char wifi_password[65]; // 设备上输入的密码

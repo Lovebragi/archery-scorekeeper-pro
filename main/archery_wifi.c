@@ -84,6 +84,9 @@ static bool s_save_enabled = true;
 static bool s_auto_reconnect = true;
 static volatile bool s_retry_cancel;
 static volatile bool s_retry_in_connect;
+static volatile bool s_ap_stopping;
+static volatile bool s_sta_resuming;
+static volatile bool s_resume_cancel;
 static char s_connect_pass[ARCHERY_WIFI_PASS_SIZE];
 static bool s_save_pending;
 
@@ -116,10 +119,29 @@ static void save_credentials(const char *ssid, const char *pass) {
     nvs_close(handle);
 }
 
+static bool sta_really_associated(void) {
+    wifi_ap_record_t ap;
+    return esp_wifi_sta_get_ap_info(&ap) == ESP_OK;
+}
+
+bool archery_wifi_resume_pending(void) {
+    return s_ap_stopping || s_sta_resuming;
+}
+
+static void cancel_sta_resume(void) {
+    s_resume_cancel = true;
+    s_sta_resuming = false;
+}
+
 // ---------------------------------------------------------------- 事件回调
 static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data) {
     (void)arg;
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+        if (s_ap_stopping || s_sta_resuming) {
+            // 配网停止/STA 恢复期间由恢复任务统一处理，避免事件覆盖状态。
+            notify();
+            return;
+        }
         s_connected = false;
         s_ip[0] = '\0';
         s_view.sta_connected = false;
@@ -143,6 +165,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
         s_view.ip[sizeof(s_view.ip) - 1] = '\0';
         s_view.sta_connected = true;
         s_view.state = ARCHERY_WIFI_CONNECTED;
+        s_sta_resuming = false;
         s_save_pending = true;
         set_message("已连接，可立即对时");
         notify();
@@ -199,6 +222,7 @@ static void scan_task(void *arg) {
 esp_err_t archery_wifi_scan(void) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     archery_wifi_retry_cancel();
+    cancel_sta_resume();
     if (s_view.state == ARCHERY_WIFI_SCANNING) return ESP_OK;
     if (s_view.state == ARCHERY_WIFI_CONNECTING) (void)esp_wifi_disconnect();
     if (xTaskCreate(scan_task, "wifi_scan", 4096, NULL, 4, NULL) != pdPASS) {
@@ -210,7 +234,10 @@ esp_err_t archery_wifi_scan(void) {
 // ---------------------------------------------------------------- 连接
 esp_err_t archery_wifi_connect(const char *ssid, const char *password) {
     if (!s_inited || !ssid || !ssid[0]) return ESP_ERR_INVALID_ARG;
-    if (!s_retry_in_connect) s_retry_cancel = true;
+    if (!s_retry_in_connect) {
+        s_retry_cancel = true;
+        cancel_sta_resume();
+    }
     s_auto_reconnect = true;
     strncpy(s_connect_pass, password ? password : "", sizeof(s_connect_pass) - 1);
     s_connect_pass[sizeof(s_connect_pass) - 1] = '\0';
@@ -312,6 +339,7 @@ esp_err_t archery_wifi_reconnect(void) {
 esp_err_t archery_wifi_disconnect(void) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     archery_wifi_retry_cancel();
+    cancel_sta_resume();
     s_auto_reconnect = false;
     esp_wifi_disconnect();
     s_connected = false;
@@ -869,6 +897,7 @@ static void dns_task(void *arg) {
 esp_err_t archery_wifi_start_provisioning(const char *preset_ssid) {
     if (!s_inited) return ESP_ERR_INVALID_STATE;
     archery_wifi_retry_cancel();
+    cancel_sta_resume();
     if (s_provisioning) return ESP_OK;
 
     // 先在 STA 模式扫描一次；热点与扫描同时进行会打断手机连接。
@@ -904,8 +933,46 @@ esp_err_t archery_wifi_start_provisioning(const char *preset_ssid) {
     return ESP_OK;
 }
 
+static void sta_resume_task(void *arg) {
+    (void)arg;
+    bool ok = false;
+    for (int attempt = 0; attempt < 3 && !s_resume_cancel; attempt++) {
+        vTaskDelay(pdMS_TO_TICKS(300));
+        if (s_resume_cancel) break;
+        if (sta_really_associated()) { ok = true; break; }
+        (void)esp_wifi_connect();
+        for (int tick = 0; tick < 20 && !s_resume_cancel; tick++) {
+            vTaskDelay(pdMS_TO_TICKS(100));
+            if (sta_really_associated()) { ok = true; break; }
+        }
+        if (ok) break;
+    }
+    if (s_resume_cancel) {
+        // 用户已手动接管，保持当前状态。
+    } else if (ok) {
+        if (s_connected) s_view.state = ARCHERY_WIFI_CONNECTED;
+        set_message("已恢复连接");
+    } else {
+        s_connected = false;
+        s_view.sta_connected = false;
+        s_ip[0] = '\0';
+        s_view.ip[0] = '\0';
+        s_view.state = ARCHERY_WIFI_IDLE;
+        set_message("恢复连接失败");
+    }
+    s_sta_resuming = false;
+    notify();
+    vTaskDelete(NULL);
+}
+
 esp_err_t archery_wifi_stop_provisioning(void) {
     if (!s_provisioning) return ESP_OK;
+
+    // 先进入“停止中”，抑制事件回调的普通断线分支，并取消自动重连。
+    s_ap_stopping = true;
+    archery_wifi_retry_cancel();
+    const bool was_associated = sta_really_associated();
+
     s_dns_run = false;
     if (s_dns_task) {
         vTaskDelay(pdMS_TO_TICKS(1200));
@@ -916,17 +983,40 @@ esp_err_t archery_wifi_stop_provisioning(void) {
         s_httpd = NULL;
     }
     s_provisioning = false;
-    // 无论 STA 是否已连接，退出配网都必须关闭 AP，否则热点会继续发射。
-    if (s_inited) {
-        const bool was_connected = s_connected;
-        wifi_mode_t mode = WIFI_MODE_NULL;
-        if (esp_wifi_get_mode(&mode) == ESP_OK && mode != WIFI_MODE_STA) {
-            (void)esp_wifi_set_mode(WIFI_MODE_STA);
-        }
-        // 切模式可能重启 Wi-Fi，之前已连接的 STA 需要主动恢复。
-        if (was_connected) (void)esp_wifi_connect();
+
+    if (!s_inited) {
+        s_ap_stopping = false;
+        notify();
+        return ESP_OK;
     }
-    s_view.state = s_connected ? ARCHERY_WIFI_CONNECTED : ARCHERY_WIFI_IDLE;
+
+    wifi_mode_t mode = WIFI_MODE_NULL;
+    esp_err_t err = esp_wifi_get_mode(&mode);
+    if (err == ESP_OK && mode != WIFI_MODE_STA) {
+        err = esp_wifi_set_mode(WIFI_MODE_STA);
+    }
+    if (err != ESP_OK) {
+        s_ap_stopping = false;
+        s_view.state = ARCHERY_WIFI_FAILED;
+        set_message("关闭热点失败");
+        notify();
+        return err;
+    }
+
+    if (was_associated) {
+        s_sta_resuming = true;
+        s_resume_cancel = false;
+        s_view.state = ARCHERY_WIFI_CONNECTING;
+        set_message("正在恢复连接…");
+        if (xTaskCreate(sta_resume_task, "wifi_resume", 4096, NULL, 3, NULL) != pdPASS) {
+            s_sta_resuming = false;
+            (void)esp_wifi_connect();
+        }
+    } else {
+        s_view.state = ARCHERY_WIFI_IDLE;
+        set_message("已断开");
+    }
+    s_ap_stopping = false;
     notify();
     ESP_LOGI(TAG, "配网热点已关闭");
     return ESP_OK;

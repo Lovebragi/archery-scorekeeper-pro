@@ -46,6 +46,9 @@ static lv_obj_t *s_screen;
 static lv_obj_t *s_timer_title;
 static lv_obj_t *s_timer_clock;
 static lv_obj_t *s_clock_label;
+static bool s_title_visible;
+static lv_obj_t *s_ruler_items[160];
+static uint8_t s_ruler_count;
 static lv_obj_t *s_timer_hint;
 static const archery_wifi_view_t *s_wifi_view;
 
@@ -64,6 +67,8 @@ static const char *s_voice_status;
 // ---------------------------------------------------------------------------
 
 static lv_obj_t *base_screen(void) {
+    s_title_visible = false;
+    s_ruler_count = 0;
     lv_obj_t *scr = lv_obj_create(NULL);
     lv_obj_set_size(scr, BSP_LCD_W, BSP_LCD_H);
     lv_obj_set_style_bg_color(scr, lv_color_hex(C_BG), 0);
@@ -163,7 +168,11 @@ static void add_status_bar(lv_obj_t *scr, const archery_flow_t *flow,
     }
     lv_obj_t *clock = make_label(scr, time_text, ARCHERY_FONT_BODY, C_MUTED);
     s_clock_label = clock;
-    lv_obj_align(clock, LV_ALIGN_TOP_RIGHT, -42, 4);
+    if (s_title_visible) {
+        lv_obj_align(clock, LV_ALIGN_TOP_LEFT, 8, 4);
+    } else {
+        lv_obj_align(clock, LV_ALIGN_TOP_RIGHT, -42, 4);
+    }
 
     // 只有联网时才画信号格；未联网/配网中留空。
     if (view && view->sta_connected) {
@@ -174,6 +183,7 @@ static void add_status_bar(lv_obj_t *scr, const archery_flow_t *flow,
 }
 
 static void add_title(lv_obj_t *scr, const char *text) {
+    s_title_visible = true;
     centered_label(scr, text, ARCHERY_FONT_TITLE, C_TEXT, 8);
 }
 
@@ -270,9 +280,9 @@ static void render_home(lv_obj_t *scr, const archery_flow_t *flow) {
     centered_label(scr, range, ARCHERY_FONT_BODY, C_MUTED, 156);
 
     static const char *items[ARCHERY_HOME_ITEMS] = {"开始训练", "历史记录", "日期时间",
-                                                    "设置", "联网"};
+                                                    "射箭工具", "设置", "联网"};
     for (uint8_t i = 0; i < ARCHERY_HOME_ITEMS; i++) {
-        const archery_rect_t rect = {32, (int16_t)(182 + i * 22), 176, 22};
+        const archery_rect_t rect = {32, (int16_t)(178 + i * 20), 176, 20};
         const bool selected = flow->home_select == i;
         lv_obj_t *card = make_card(scr, rect, selected, false);
         lv_obj_t *label = make_label(card, items[i], ARCHERY_FONT_BODY,
@@ -280,6 +290,352 @@ static void render_home(lv_obj_t *scr, const archery_flow_t *flow) {
         lv_obj_center(label);
     }
     add_hint(scr, "上/下 选择 · 确定 进入", 300);
+}
+
+static void ruler_register(lv_obj_t *obj) {
+    if (obj && s_ruler_count < (uint8_t)(sizeof(s_ruler_items) / sizeof(s_ruler_items[0]))) {
+        s_ruler_items[s_ruler_count++] = obj;
+    }
+}
+
+static void ruler_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color) {
+    lv_obj_t *line = lv_obj_create(scr);
+    ruler_register(line);
+    lv_obj_set_pos(line, x, y);
+    lv_obj_set_size(line, w, h);
+    lv_obj_set_style_bg_color(line, lv_color_hex(color), 0);
+    lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(line, 0, 0);
+    lv_obj_set_style_radius(line, 0, 0);
+    lv_obj_remove_flag(line, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+static void render_tools(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "射箭工具");
+    static const char *names[] = {"瞄具刻度", "刻度估算", "节拍器", "测距", "参考尺"};
+    for (uint8_t row = 0; row < 5; row++) {
+        const archery_rect_t rect = {20, (int16_t)(66 + row * 38), 200, 34};
+        const bool selected = flow->tools_row == row;
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        lv_obj_t *name = make_label(card, names[row], ARCHERY_FONT_BODY,
+                                    selected ? C_GOLD : C_TEXT);
+        lv_obj_center(name);
+    }
+    add_hint(scr, "上/下 选择 · 确定 进入", 270);
+    add_hint(scr, "长按确定 返回主页", 294);
+}
+
+static void render_ruler(lv_obj_t *scr, const archery_flow_t *flow) {
+    (void)flow;
+    // 屏幕有效高度 320 px 对应 40 mm：8 px/mm。
+    s_ruler_count = 0;
+    // 屏幕有效高度 320 px 对应 40 mm，固定 8 px/mm。
+    const int pmm = 8;
+    const int ruler_px = 320;
+    const int vshift = (flow ? flow->ruler_offset : 0) * pmm;
+    const int metric_x = 5;     // 外壳遮挡约 1～2px，内缩到可见区
+    const int imperial_x = 234; // 右侧同样内缩
+    const int axis_top = -15 * pmm + vshift;
+    ruler_rect(scr, metric_x, axis_top, 1, 70 * pmm, C_GOLD);
+    ruler_rect(scr, imperial_x, axis_top, 1, 70 * pmm, C_GOLD);
+    char text[12];
+    // 连续创建 -15～55 mm 的刻度；移动范围 ±15 mm，50 mm 可进入视野。
+    for (int mm = -15; mm <= 55; mm++) {
+        const int y = mm * pmm + vshift;
+        int len = 6;
+        if (mm % 10 == 0) len = 16;
+        else if (mm % 5 == 0) len = 10;
+        ruler_rect(scr, metric_x, y, len, 1, C_TEXT);
+        if (mm >= 0 && mm <= 50 && mm % 10 == 0) {
+            snprintf(text, sizeof(text), "%d", mm);
+            lv_obj_t *label = make_label(scr, text, ARCHERY_FONT_BODY, C_TEXT);
+            ruler_register(label);
+            const int ly = y - 9;
+            lv_obj_set_pos(label, metric_x + len + 4, ly);
+        }
+    }
+    // 英制：1 in = 25.4 mm，0.1 in = 20.32 px；覆盖约 -0.4～2.0 in。
+    for (int tenth = -4; tenth <= 20; tenth++) {
+        const int y = (int)(tenth * 20.32f + 0.5f) + vshift;
+        const int len = (tenth % 5 == 0) ? 16 : 6;
+        ruler_rect(scr, imperial_x - len, y, len, 1, C_TEXT);
+        if (tenth >= 0 && tenth % 5 == 0) {
+            if (tenth == 0) snprintf(text, sizeof(text), "0");
+            else if (tenth == 5) snprintf(text, sizeof(text), "0.5");
+            else if (tenth == 10) snprintf(text, sizeof(text), "1");
+            else if (tenth == 15) snprintf(text, sizeof(text), "1.5");
+            else snprintf(text, sizeof(text), "2");
+            lv_obj_t *label = make_label(scr, text, ARCHERY_FONT_BODY, C_TEXT);
+            ruler_register(label);
+            const int ly = y - 9;
+            lv_obj_set_pos(label, imperial_x - len - 34, ly);
+        }
+    }
+    // mm/in 固定在屏幕顶角，不随刻度平移。
+    lv_obj_t *mm_title = make_label(scr, "mm", ARCHERY_FONT_BODY, C_GOLD);
+    lv_obj_set_pos(mm_title, 52, 2);
+    lv_obj_t *in_title = make_label(scr, "in", ARCHERY_FONT_BODY, C_GOLD);
+    lv_obj_set_pos(in_title, 158, 2);
+}
+
+static void render_sight_calc(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "刻度估算");
+    char line[96];
+    snprintf(line, sizeof(line), "目标距离 %u m", (unsigned)flow->calc_distance);
+    centered_label(scr, line, ARCHERY_FONT_TITLE, C_GOLD, 76);
+    centered_label(scr,
+                   flow->calc_mode == ARCHERY_SIGHT_LINEAR ? "算法：线性" : "算法：抛物线（三点）",
+                   ARCHERY_FONT_BODY, C_MUTED, 112);
+    int16_t mark = 0;
+    if (archery_sight_estimate(&flow->sight, (uint16_t)(flow->calc_distance * 10u),
+                               (archery_sight_fit_t)flow->calc_mode, &mark)) {
+        char value[24];
+        char suffix[24] = "";
+        uint16_t first = 0, last = 0;
+        bool have = false;
+        for (uint8_t i = 0; i < flow->sight.count; i++) {
+            if (flow->sight.items[i].mark_tenths == 0) continue;
+            const uint16_t d = flow->sight.items[i].distance_tenths;
+            if (!have || d < first) first = d;
+            if (!have || d > last) last = d;
+            have = true;
+        }
+        if (have && (flow->calc_distance * 10u < first || flow->calc_distance * 10u > last)) {
+            snprintf(suffix, sizeof(suffix), "（外推）");
+        }
+        archery_sight_format(mark, value, sizeof(value));
+        snprintf(line, sizeof(line), "估算刻度 %s%s", value, suffix);
+        centered_label(scr, line, ARCHERY_FONT_TITLE, C_TEXT, 156);
+    } else {
+        centered_label(scr, "超出范围，需至少两个已知刻度",
+                       ARCHERY_FONT_BODY, C_MUTED, 156);
+    }
+    add_hint(scr, "上/下 调距离 · 确定 换算法", 216);
+    add_hint(scr, "长按确定 返回工具", 244);
+    centered_label(scr, "刻度估值仅供参考", ARCHERY_FONT_BODY, C_GOLD, 282);
+}
+
+static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "节拍器");
+    char line[48];
+    snprintf(line, sizeof(line), "%u BPM", (unsigned)flow->metro_bpm);
+    centered_label(scr, line, ARCHERY_FONT_TITLE, C_GOLD, 38);
+    if (flow->metro_running) {
+        if (flow->metro_beat == 0) {
+            centered_label(scr, "预备", ARCHERY_FONT_BODY, C_MUTED, 64);
+        } else {
+            snprintf(line, sizeof(line), "第 %u / %u 拍", (unsigned)flow->metro_beat,
+                     (unsigned)flow->metro_accent);
+            centered_label(scr, line, ARCHERY_FONT_BODY, C_TEXT, 64);
+        }
+    } else {
+        centered_label(scr, "已停止", ARCHERY_FONT_BODY, C_MUTED, 64);
+    }
+
+    static const char *names[] = {"开始/停止", "BPM", "重音", "预备拍", "音量", "自动停止", "预设"};
+    char value[24];
+    const uint8_t visible = 7;
+    const uint8_t offset = 0;  // 7 行完整显示，无需滚动
+    for (uint8_t i = 0; i < visible; i++) {
+        const uint8_t row = (uint8_t)(offset + i);
+        const archery_rect_t rect = {20, (int16_t)(84 + i * 28), 200, 26};
+        const bool selected = flow->metro_row == row;
+        const bool editing = selected && flow->metro_edit && row != 0u;
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        if (editing) {
+            lv_obj_set_style_border_width(card, 3, 0);
+            lv_obj_set_style_border_color(card, lv_color_hex(C_GOLD), 0);
+        }
+        lv_obj_t *name = make_label(card, names[row], ARCHERY_FONT_BODY,
+                                    selected ? C_GOLD : C_TEXT);
+        lv_obj_align(name, LV_ALIGN_LEFT_MID, 10, 0);
+        switch (row) {
+        case 0:
+            snprintf(value, sizeof(value), "%s", flow->metro_running ? "停止" : "开始");
+            break;
+        case 1: snprintf(value, sizeof(value), "%u", (unsigned)flow->metro_bpm); break;
+        case 2: snprintf(value, sizeof(value), "每 %u 拍", (unsigned)flow->metro_accent); break;
+        case 3: snprintf(value, sizeof(value), "%u 拍", (unsigned)flow->metro_countin); break;
+        case 4: snprintf(value, sizeof(value), "%u%%", (unsigned)(flow->settings.beep_volume * 20u)); break;
+        case 5:
+            if (flow->metro_stop_min == 0) snprintf(value, sizeof(value), "关");
+            else snprintf(value, sizeof(value), "%u 分钟", (unsigned)flow->metro_stop_min);
+            break;
+        default: {
+            static const char *presets[] = {"自定义", "慢速 40", "基础 60", "快速 90"};
+            snprintf(value, sizeof(value), "%s", presets[flow->metro_preset]);
+            break;
+        }
+        }
+        lv_obj_t *val = make_label(card, value,
+                                   editing ? ARCHERY_FONT_TITLE : ARCHERY_FONT_BODY,
+                                   selected ? C_GOLD : C_TEXT);
+        lv_obj_align(val, LV_ALIGN_RIGHT_MID, -10, 0);
+    }
+    add_hint(scr, flow->metro_edit ? "上/下 调值 · 确定 完成"
+                                   : "上/下 选择 · 长按确定 退出", 286);
+}
+
+static void rangefinder_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color) {
+    lv_obj_t *line = lv_obj_create(scr);
+    lv_obj_set_pos(line, x, y);
+    lv_obj_set_size(line, w, h);
+    lv_obj_set_style_bg_color(line, lv_color_hex(color), 0);
+    lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(line, 0, 0);
+    lv_obj_set_style_radius(line, 0, 0);
+    lv_obj_remove_flag(line, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+static void render_range_intro(lv_obj_t *scr, const archery_flow_t *flow) {
+    (void)flow;
+    add_title(scr, "测距");
+    centered_label(scr, "使用方法", ARCHERY_FONT_BODY, C_MUTED, 38);
+    centered_label(scr, "1 单手握住设备", ARCHERY_FONT_BODY, C_TEXT, 68);
+    centered_label(scr, "2 手臂伸直", ARCHERY_FONT_BODY, C_TEXT, 96);
+    centered_label(scr, "3 屏幕垂直正对眼睛", ARCHERY_FONT_BODY, C_TEXT, 124);
+    centered_label(scr, "与眼同高", ARCHERY_FONT_BODY, C_TEXT, 152);
+    centered_label(scr, "4 0线对靶面下沿", ARCHERY_FONT_BODY, C_TEXT, 184);
+    centered_label(scr, "5 游标卡住上沿", ARCHERY_FONT_BODY, C_TEXT, 212);
+    centered_label(scr, "眼距≈身高×0.35", ARCHERY_FONT_BODY, C_MUTED, 246);
+    add_hint(scr, "确定 参数 · 长按返回", 284);
+}
+
+static void render_range_config(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "测距参数");
+    static const char *target_names[] = {"122全", "80全", "60全", "40全", "40半"};
+    static const char *names[] = {"靶面", "眼到屏幕", "开始测距"};
+    char line[32];
+    for (uint8_t row = 0; row < 3; row++) {
+        const archery_rect_t rect = {20, (int16_t)(96 + row * 54), 200, 40};
+        const bool selected = flow->range_row == row;
+        const bool editing = selected && flow->range_edit;
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        if (editing) {
+            lv_obj_set_style_border_width(card, 3, 0);
+            lv_obj_set_style_border_color(card, lv_color_hex(C_GOLD), 0);
+        }
+        lv_obj_t *name = make_label(card, names[row], ARCHERY_FONT_BODY,
+                                    selected ? C_GOLD : C_TEXT);
+        lv_obj_align(name, LV_ALIGN_LEFT_MID, 10, 0);
+        switch (row) {
+        case 0: snprintf(line, sizeof(line), "%s", target_names[flow->range_target]); break;
+        case 1: snprintf(line, sizeof(line), "%u cm", (unsigned)flow->range_eye_cm); break;
+        default: snprintf(line, sizeof(line), "%s", "进入"); break;
+        }
+        lv_obj_t *val = make_label(card, line,
+                                   editing ? ARCHERY_FONT_TITLE : ARCHERY_FONT_BODY,
+                                   selected ? C_GOLD : C_TEXT);
+        lv_obj_align(val, LV_ALIGN_RIGHT_MID, -10, 0);
+    }
+    add_hint(scr, "上/下 选择 · 确定 编辑", 264);
+    add_hint(scr, "长按确定 返回工具", 292);
+}
+
+static void render_range_view(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "测距刻度");
+    static const uint16_t full_mm[] = {1220, 800, 600, 400, 400};
+    static const char *target_names[] = {"122全", "80全", "60全", "40全", "40半"};
+    const uint8_t target = flow->range_target < 5u ? flow->range_target : 0u;
+    const uint16_t size_mm = full_mm[target];
+    const int bottom = 286;
+    const int axis_x = 232;
+    const uint32_t distance = flow->range_distance_m ? flow->range_distance_m : 30u;
+    // 0 线对靶面下沿，游标卡上沿：按完整靶面高度计算。
+    const int height = (int)((uint32_t)flow->range_eye_cm * 10u * size_mm * 8u /
+                             (distance * 1000u));
+    int cursor = bottom - height;
+    if (cursor < 12) cursor = 12;
+
+    char line[64];
+    snprintf(line, sizeof(line), "%u m  %s", (unsigned)distance,
+             target_names[target]);
+    centered_label(scr, line, ARCHERY_FONT_TITLE, C_GOLD, 34);
+
+    // 0 线在底部，距离刻度向上增长。
+    rangefinder_rect(scr, 140, bottom, axis_x - 140 + 1, 1, C_GOLD);
+    rangefinder_rect(scr, axis_x, 0, 1, bottom + 1, C_GOLD);
+    lv_obj_t *zero = make_label(scr, "0", ARCHERY_FONT_BODY, C_MUTED);
+    lv_obj_set_pos(zero, axis_x - 26, bottom - 18);
+
+    // 10 m 参考刻度。
+    for (int d = 20; d <= 70; d += 10) {
+        const int h = (int)((uint32_t)flow->range_eye_cm * 10u * size_mm * 8u /
+                            ((uint32_t)d * 1000u));
+        const int y = bottom - h;
+        if (y < 10 || y > bottom - 4) continue;
+        rangefinder_rect(scr, axis_x - 8, y, 8, 1, C_MUTED);
+        snprintf(line, sizeof(line), "%d", d);
+        lv_obj_t *label = make_label(scr, line, ARCHERY_FONT_BODY, C_MUTED);
+        lv_obj_set_pos(label, axis_x - 40, y - 9);
+    }
+
+    // 游标：对准靶子上边缘。
+    rangefinder_rect(scr, 140, cursor, axis_x - 140 + 1, 2, C_GOLD);
+    snprintf(line, sizeof(line), "%u m", (unsigned)distance);
+    lv_obj_t *value = make_label(scr, line, ARCHERY_FONT_BODY, C_GOLD);
+    lv_obj_set_pos(value, axis_x - 70, cursor - 20);
+    if (height > bottom - 12) {
+        centered_label(scr, "靶面超出屏幕，请加大距离",
+                       ARCHERY_FONT_BODY, C_MUTED, 60);
+    }
+    add_hint(scr, "0线对下沿 · 游标卡上沿", 290);
+}
+
+static void render_sight(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "瞄具刻度");
+    const uint8_t count = flow->sight.count;
+    for (uint8_t i = 0; i < count; i++) {
+        const archery_rect_t rect = {20, (int16_t)(50 + i * 28), 200, 26};
+        const bool selected = flow->sight_row == i;
+        const bool editing = selected && flow->sight_edit_field != 0;
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        const bool configured = flow->sight.items[i].distance_tenths != 0 ||
+                                flow->sight.items[i].mark_tenths != 0;
+        if (configured) {
+            const bool valid = archery_sight_entry_valid(&flow->sight, i);
+            lv_obj_set_style_border_color(card, lv_color_hex(valid ? C_BLUE : C_RED), 0);
+            lv_obj_set_style_border_width(card, editing ? 3 : 2, 0);
+        } else if (editing) {
+            lv_obj_set_style_border_width(card, 3, 0);
+            lv_obj_set_style_border_color(card, lv_color_hex(C_GOLD), 0);
+        }
+        char distance[16];
+        const uint16_t dt = flow->sight.items[i].distance_tenths;
+        if (dt == 0) {
+            snprintf(distance, sizeof(distance), "-- m");
+        } else if (dt % 10u == 0) {
+            snprintf(distance, sizeof(distance), "%u m", (unsigned)(dt / 10u));
+        } else {
+            snprintf(distance, sizeof(distance), "%u.%u m",
+                     (unsigned)(dt / 10u), (unsigned)(dt % 10u));
+        }
+        const bool edit_distance = flow->sight_edit_field == 2;
+        lv_obj_t *name = make_label(card, distance,
+                                    (selected && edit_distance) ? ARCHERY_FONT_TITLE
+                                                                : ARCHERY_FONT_BODY,
+                                    selected ? C_GOLD : C_TEXT);
+        lv_obj_align(name, LV_ALIGN_LEFT_MID, 12, 0);
+        char mark[16];
+        const bool unset = flow->sight.items[i].mark_tenths == 0;
+        if (unset) snprintf(mark, sizeof(mark), "--");
+        else archery_sight_format(flow->sight.items[i].mark_tenths, mark, sizeof(mark));
+        const bool edit_mark = flow->sight_edit_field == 1;
+        lv_obj_t *value = make_label(card, mark,
+                                     (selected && edit_mark) ? ARCHERY_FONT_TITLE
+                                                             : ARCHERY_FONT_BODY,
+                                     selected ? C_GOLD : C_TEXT);
+        lv_obj_align(value, LV_ALIGN_RIGHT_MID, -12, 0);
+    }
+    if (flow->sight_edit_field == 2) {
+        add_hint(scr, "上/下 调距离 · 确定 下一步", 226);
+    } else if (flow->sight_edit_field == 1) {
+        add_hint(scr, "上/下 调刻度 · 确定 下一步", 226);
+    } else {
+        add_hint(scr, "上/下 选行 · 确定 编辑", 226);
+    }
+    add_hint(scr, flow->sight_edit_field != 0 ? "长按确定 清除当前条目"
+                                               : "长按确定 保存返回", 254);
 }
 
 static void render_setup(lv_obj_t *scr, const archery_flow_t *flow) {
@@ -1227,6 +1583,14 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_SETTINGS: render_settings(scr, flow); break;
     case ARCHERY_PAGE_AUTO_CHECK: render_auto_check(scr, flow); break;
     case ARCHERY_PAGE_BETA: render_beta(scr, flow); break;
+    case ARCHERY_PAGE_SIGHT: render_sight(scr, flow); break;
+    case ARCHERY_PAGE_TOOLS: render_tools(scr, flow); break;
+    case ARCHERY_PAGE_RULER: render_ruler(scr, flow); break;
+    case ARCHERY_PAGE_SIGHT_CALC: render_sight_calc(scr, flow); break;
+    case ARCHERY_PAGE_METRONOME: render_metronome(scr, flow); break;
+    case ARCHERY_PAGE_RANGE_INTRO: render_range_intro(scr, flow); break;
+    case ARCHERY_PAGE_RANGE_CONFIG: render_range_config(scr, flow); break;
+    case ARCHERY_PAGE_RANGE_VIEW: render_range_view(scr, flow); break;
     case ARCHERY_PAGE_CLOCK: render_clock(scr, flow); break;
     case ARCHERY_PAGE_WIFI: render_wifi(scr, flow); break;
     case ARCHERY_PAGE_WIFI_PASSWORD: render_wifi_password(scr, flow); break;
@@ -1234,15 +1598,30 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_DIAG_LOG: render_diag_log(scr, flow); break;
     case ARCHERY_PAGE_TIMER: render_timer(scr, flow); break;
     }
-    add_battery(scr, battery_soc);
-    add_status_bar(scr, flow, s_wifi_view);
-    lv_obj_t *version = make_label(scr, "v" ARCHERY_FIRMWARE_VERSION, ARCHERY_FONT_BODY, C_MUTED);
-    lv_obj_set_pos(version, 8, 4);
+    if (flow->page != ARCHERY_PAGE_RULER) {
+        add_battery(scr, battery_soc);
+        add_status_bar(scr, flow, s_wifi_view);
+        if (flow->page == ARCHERY_PAGE_HOME) {
+            lv_obj_t *version = make_label(scr, "v" ARCHERY_FIRMWARE_VERSION,
+                                           ARCHERY_FONT_BODY, C_MUTED);
+            lv_obj_set_pos(version, 8, 4);
+        }
+    } else {
+        s_clock_label = NULL;
+    }
     lv_screen_load(scr);
     if (previous) lv_obj_delete(previous);
 }
 
+void archery_ui_shift_ruler(int dx) {
+    for (uint8_t i = 0; i < s_ruler_count; i++) {
+        lv_obj_t *obj = s_ruler_items[i];
+        if (obj) lv_obj_set_y(obj, lv_obj_get_y(obj) + dx);
+    }
+}
+
 void archery_ui_clear(void) {
+    s_ruler_count = 0;
     if (s_screen) {
         lv_obj_delete(s_screen);
         s_screen = NULL;

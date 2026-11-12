@@ -12,6 +12,7 @@
 #include "archery_logbuf.h"
 #include "archery_name.h"
 #include "archery_history.h"
+#include "archery_metro.h"
 #include "archery_score.h"
 #include "archery_settings.h"
 #include "archery_store.h"
@@ -56,6 +57,7 @@ typedef enum {
     APP_MSG_VOICE_OK,
     APP_MSG_VOICE_FAIL,
     APP_MSG_AUTO_CHECK_RESULT,
+    APP_MSG_METRONOME_TICK,
 } app_msg_type_t;
 
 typedef struct {
@@ -109,6 +111,9 @@ static int64_t s_clock_base_us;
 static bool s_clock_set;
 static uint32_t s_clock_saved;
 static int64_t s_next_clock_save_us;
+static esp_timer_handle_t s_metro_timer;
+static uint32_t s_metro_tick_count;
+static int64_t s_metro_start_us;
 static uint32_t s_last_clock_minute;
 static uint32_t s_session_when;
 static archery_wifi_view_t s_wifi_view;
@@ -460,6 +465,72 @@ static volatile bool s_auto_checking;
 static int64_t s_auto_deadline_us;
 static int64_t s_auto_check_started_us;
 
+static void metro_stop(void) {
+    if (s_metro_timer) (void)esp_timer_stop(s_metro_timer);
+    s_flow.metro_running = 0;
+    s_flow.metro_beat = 0;
+    s_metro_tick_count = 0;
+    const archery_metro_config_t cfg = {
+        .bpm = s_flow.metro_bpm,
+        .accent = s_flow.metro_accent,
+        .countin = s_flow.metro_countin,
+        .stop_min = s_flow.metro_stop_min,
+        .volume = s_flow.metro_volume,
+        .preset = s_flow.metro_preset,
+    };
+    (void)archery_metro_save(&cfg);
+    (void)archery_settings_save(&s_flow.settings);
+    redraw();
+}
+
+static void metro_timer_cb(void *arg) {
+    (void)arg;
+    if (!s_queue) return;
+    const app_message_t message = {.type = APP_MSG_METRONOME_TICK};
+    (void)xQueueSend(s_queue, &message, 0);
+}
+
+static void metro_start(void) {
+    if (s_metro_timer == NULL) {
+        const esp_timer_create_args_t args = {.callback = metro_timer_cb, .name = "metro"};
+        if (esp_timer_create(&args, &s_metro_timer) != ESP_OK) return;
+    }
+    (void)esp_timer_stop(s_metro_timer);
+    s_metro_tick_count = 0;
+    s_metro_start_us = esp_timer_get_time();
+    s_flow.metro_beat = 0;
+    s_flow.metro_running = 1;
+    const uint32_t period_us = 60000000u / (s_flow.metro_bpm ? s_flow.metro_bpm : 60u);
+    if (esp_timer_start_periodic(s_metro_timer, period_us) != ESP_OK) {
+        s_flow.metro_running = 0;
+    }
+    redraw();
+}
+
+static void metro_tick(void) {
+    if (!s_flow.metro_running) return;
+    s_metro_tick_count++;
+    const uint8_t countin = s_flow.metro_countin;
+    if (countin > 0 && s_metro_tick_count <= countin) {
+        s_flow.metro_beat = 0;
+        const uint8_t accent_every = s_flow.metro_accent ? s_flow.metro_accent : 4u;
+        const bool accent = ((s_metro_tick_count - 1u) % accent_every) == 0u;
+        archery_voice_metronome_click(accent, (uint8_t)(s_flow.settings.beep_volume * 20u));
+    } else {
+        const uint32_t music_tick = s_metro_tick_count - countin - 1u;
+        const uint8_t beat = (uint8_t)(music_tick % (s_flow.metro_accent ? s_flow.metro_accent : 4u) + 1u);
+        s_flow.metro_beat = beat;
+        archery_voice_metronome_click(beat == 1u, (uint8_t)(s_flow.settings.beep_volume * 20u));
+    }
+    if (s_flow.metro_stop_min > 0 && s_metro_start_us > 0 &&
+        esp_timer_get_time() - s_metro_start_us >=
+            (int64_t)s_flow.metro_stop_min * 60 * 1000000) {
+        metro_stop();
+        return;
+    }
+    redraw();
+}
+
 static void auto_check_task(void *arg) {
     (void)arg;
     // 后台只做网络检测，不碰设置和界面。
@@ -503,7 +574,19 @@ static void auto_check_start(void) {
 }
 
 static void handle_key(archery_key_t key) {
+    const bool was_ruler = s_flow.page == ARCHERY_PAGE_RULER;
+    const int16_t ruler_before = s_flow.ruler_offset;
+    const bool was_calc = s_flow.page == ARCHERY_PAGE_SIGHT_CALC;
+    const uint16_t calc_distance_before = s_flow.calc_distance;
+    const uint8_t calc_mode_before = s_flow.calc_mode;
+    const bool was_metro = s_flow.page == ARCHERY_PAGE_METRONOME;
+    const uint16_t metro_bpm_before = s_flow.metro_bpm;
     const archery_act_t action = archery_flow_handle(&s_flow, key);
+    const bool ruler_moved = was_ruler && s_flow.page == ARCHERY_PAGE_RULER &&
+                             s_flow.ruler_offset != ruler_before;
+    const bool calc_changed = was_calc && s_flow.page == ARCHERY_PAGE_SIGHT_CALC &&
+                              (s_flow.calc_distance != calc_distance_before ||
+                               s_flow.calc_mode != calc_mode_before);
     switch (action) {
     case ARCHERY_ACT_SESSION_START:
         s_session_start_us = esp_timer_get_time();
@@ -542,7 +625,14 @@ static void handle_key(archery_key_t key) {
         break;
     case ARCHERY_ACT_SETTINGS_CHANGED:
         apply_settings(&s_flow.settings);
-        if (s_flow.settings_row == ARCHERY_SETTINGS_ROWS - 2u) archery_voice_preview_beep();
+        if (s_flow.settings_row == ARCHERY_SETTINGS_ROW_BEEP_VOLUME) {
+            archery_voice_preview_beep();
+        } else if (s_flow.page == ARCHERY_PAGE_METRONOME && s_flow.metro_row == 4u) {
+            if (!s_flow.metro_running) {
+                archery_voice_metronome_click(true,
+                    (uint8_t)(s_flow.settings.beep_volume * 20u));
+            }
+        }
         break;
     case ARCHERY_ACT_SETTINGS_SAVE:
         apply_settings(&s_flow.settings);
@@ -611,15 +701,43 @@ static void handle_key(archery_key_t key) {
     case ARCHERY_ACT_AUTO_CHECK:
         auto_check_start();
         break;
+    case ARCHERY_ACT_SIGHT_SAVE:
+        if (!archery_sight_save(&s_flow.sight)) ESP_LOGW(TAG, "sight save failed");
+        break;
+    case ARCHERY_ACT_METRONOME_TOGGLE:
+        if (s_flow.metro_running) metro_stop();
+        else metro_start();
+        break;
+    case ARCHERY_ACT_METRONOME_STOP:
+        metro_stop();
+        break;
     case ARCHERY_ACT_NONE:
         break;
+    }
+    // BPM 在播放中也能立即生效。
+    if (was_metro && s_flow.page == ARCHERY_PAGE_METRONOME && s_flow.metro_running &&
+        s_flow.metro_bpm != metro_bpm_before && s_metro_timer) {
+        (void)esp_timer_stop(s_metro_timer);
+        const uint32_t period_us = 60000000u / (s_flow.metro_bpm ? s_flow.metro_bpm : 60u);
+        (void)esp_timer_start_periodic(s_metro_timer, period_us);
     }
     s_repeat_inflight = false;
     sync_detail_group();
     if (s_flow.page == ARCHERY_PAGE_HOME) {
         archery_flow_clear_runtime_entries(&s_flow);
     }
-    redraw();
+    if (was_ruler && s_flow.page == ARCHERY_PAGE_RULER) {
+        if (ruler_moved && bsp_lvgl_lock(100)) {
+            archery_ui_shift_ruler((int)(s_flow.ruler_offset - ruler_before) * 8);
+            bsp_lvgl_unlock();
+        }
+        // 到达边界时 offset 不再变化，绝不能重绘整页，否则连发会压垮 LVGL。
+    } else if (was_calc && s_flow.page == ARCHERY_PAGE_SIGHT_CALC) {
+        if (calc_changed) redraw();
+        // 距离到边界后不再重绘，避免长按连发堆积。
+    } else {
+        redraw();
+    }
 }
 
 // 物理按键 → 逻辑键。屏幕倒装时按 180° 旋转整列按键的角色。
@@ -639,9 +757,16 @@ static void repeat_timer_cb(void *arg) {
     const bool setup_repeat = s_flow.page == ARCHERY_PAGE_SETUP &&
                               archery_flow_roll_entry(&s_flow) && s_flow.setup_row <= 1u;
     const bool clock_repeat = s_flow.page == ARCHERY_PAGE_CLOCK;
+    const bool sight_repeat = s_flow.page == ARCHERY_PAGE_SIGHT && s_flow.sight_editing;
+    const bool ruler_repeat = s_flow.page == ARCHERY_PAGE_RULER;
+    const bool calc_repeat = s_flow.page == ARCHERY_PAGE_SIGHT_CALC;
+    const bool metro_repeat = s_flow.page == ARCHERY_PAGE_METRONOME && s_flow.metro_edit;
+    const bool range_repeat = (s_flow.page == ARCHERY_PAGE_RANGE_CONFIG && s_flow.range_edit) ||
+                               s_flow.page == ARCHERY_PAGE_RANGE_VIEW;
     if (!s_repeat_active || (s_flow.page != ARCHERY_PAGE_HISTORY &&
                              s_flow.page != ARCHERY_PAGE_DIAG_LOG && !entry_repeat && !settings_repeat &&
-                             !setup_repeat && !clock_repeat)) {
+                             !setup_repeat && !clock_repeat && !sight_repeat && !ruler_repeat &&
+                             !calc_repeat && !metro_repeat && !range_repeat)) {
         if (s_repeat_timer) (void)esp_timer_stop(s_repeat_timer);
         s_repeat_active = false;
         return;
@@ -777,6 +902,88 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
             const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
             (void)xQueueSend(s_queue, &step, 0);
             (void)esp_timer_start_periodic(s_repeat_timer, 500000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_RANGE_VIEW && s_repeat_timer) {
+            s_repeat_key = pressed;
+            s_repeat_active = true;
+            s_repeat_used = true;
+            s_repeat_slow = false;
+            s_repeat_period_us = 100000;
+            (void)esp_timer_stop(s_repeat_timer);
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+            (void)esp_timer_start_once(s_repeat_timer, 400000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_RANGE_CONFIG && s_flow.range_edit && s_repeat_timer) {
+            s_repeat_key = pressed;
+            s_repeat_active = true;
+            s_repeat_used = true;
+            s_repeat_slow = false;
+            s_repeat_period_us = 100000;
+            (void)esp_timer_stop(s_repeat_timer);
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+            (void)esp_timer_start_once(s_repeat_timer, 400000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_RANGE_CONFIG) {
+            s_repeat_used = true;
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_METRONOME && s_flow.metro_edit && s_repeat_timer) {
+            s_repeat_key = pressed;
+            s_repeat_active = true;
+            s_repeat_used = true;
+            s_repeat_slow = false;
+            s_repeat_period_us = 100000;
+            (void)esp_timer_stop(s_repeat_timer);
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+            (void)esp_timer_start_once(s_repeat_timer, 400000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_METRONOME) {
+            s_repeat_used = true;
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_SIGHT_CALC && s_repeat_timer) {
+            s_repeat_key = pressed;
+            s_repeat_active = true;
+            s_repeat_used = true;
+            s_repeat_slow = false;
+            s_repeat_period_us = 100000;
+            (void)esp_timer_stop(s_repeat_timer);
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+            (void)esp_timer_start_once(s_repeat_timer, 400000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   (s_flow.page == ARCHERY_PAGE_TOOLS ||
+                    (s_flow.page == ARCHERY_PAGE_SIGHT && !s_flow.sight_editing))) {
+            s_repeat_used = true;
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_RULER && s_repeat_timer) {
+            s_repeat_key = pressed;
+            s_repeat_active = true;
+            s_repeat_used = true;
+            s_repeat_slow = false;
+            s_repeat_period_us = 80000;
+            (void)esp_timer_stop(s_repeat_timer);
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+            (void)esp_timer_start_once(s_repeat_timer, 400000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_SIGHT && s_flow.sight_editing && s_repeat_timer) {
+            s_repeat_key = pressed;
+            s_repeat_active = true;
+            s_repeat_used = true;
+            s_repeat_slow = false;
+            s_repeat_period_us = 80000;
+            (void)esp_timer_stop(s_repeat_timer);
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+            (void)esp_timer_start_once(s_repeat_timer, 400000);
         } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
                    (s_flow.page == ARCHERY_PAGE_HISTORY || s_flow.page == ARCHERY_PAGE_DIAG ||
                     s_flow.page == ARCHERY_PAGE_DIAG_LOG) && s_repeat_timer) {
@@ -1070,9 +1277,11 @@ static void worker_task(void *argument) {
             } else if (message.type == APP_MSG_REFRESH) {
                 redraw();
             } else if (message.type == APP_MSG_VOICE_OK) {
+                ESP_LOGI(TAG, "voice result message OK");
                 archery_voice_play_saved();
                 redraw();
             } else if (message.type == APP_MSG_VOICE_FAIL) {
+                ESP_LOGI(TAG, "voice result message FAIL");
                 archery_voice_play_config_failed();
                 redraw();
             } else if (message.type == APP_MSG_AUTO_CHECK_RESULT) {
@@ -1092,6 +1301,8 @@ static void worker_task(void *argument) {
                     archery_flow_open_diag(&s_flow);
                     redraw();
                 }
+            } else if (message.type == APP_MSG_METRONOME_TICK) {
+                metro_tick();
             } else if (message.type == APP_MSG_TIMER_TICK) {
                 handle_timer_tick();
             } else {
@@ -1138,6 +1349,7 @@ static void worker_task(void *argument) {
             if (s_flow.settings.auto_reconnect &&
                 archery_wifi_auto_reconnect_enabled() &&
                 !archery_wifi_retry_active() &&
+                !archery_wifi_resume_pending() &&
                 s_flow.page != ARCHERY_PAGE_WIFI &&
                 s_flow.page != ARCHERY_PAGE_WIFI_PASSWORD &&
                 !archery_wifi_provisioning() &&
@@ -1161,6 +1373,8 @@ static void worker_task(void *argument) {
             s_flow.page != ARCHERY_PAGE_WIFI &&
             s_flow.page != ARCHERY_PAGE_WIFI_PASSWORD &&
             s_flow.page != ARCHERY_PAGE_TIMER &&
+            s_flow.page != ARCHERY_PAGE_METRONOME &&
+            s_flow.page != ARCHERY_PAGE_RULER &&
             !archery_wifi_provisioning()) {
             light_sleep_now();
         }
@@ -1188,6 +1402,16 @@ void archery_app_start(void) {
     }
 
     archery_flow_init(&s_flow);
+    (void)archery_sight_load(&s_flow.sight);
+    archery_metro_config_t metro_cfg;
+    if (archery_metro_load(&metro_cfg)) {
+        s_flow.metro_bpm = metro_cfg.bpm;
+        s_flow.metro_accent = metro_cfg.accent;
+        s_flow.metro_countin = metro_cfg.countin;
+        s_flow.metro_stop_min = metro_cfg.stop_min;
+        s_flow.metro_volume = metro_cfg.volume;
+        s_flow.metro_preset = metro_cfg.preset;
+    }
     ESP_LOGI(TAG, "%s %s", ARCHERY_FIRMWARE_CHANNEL, ARCHERY_FIRMWARE_VERSION);
 
     if (archery_store_load(&s_history) != ESP_OK) {

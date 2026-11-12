@@ -10,6 +10,8 @@ static void press(archery_flow_t *flow, archery_key_t key) {
 }
 
 static void start_session(archery_flow_t *flow, int groups, int arrows) {
+    // 旧用例按完整行数（含 X 行）编写，显式开启 X 行。
+    flow->settings.record_x = 1;
     // 主页 -> 开始训练 -> 设置页
     flow->home_select = 0;
     press(flow, ARCHERY_KEY_OK);
@@ -50,11 +52,15 @@ static void test_home_and_setup(void) {
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.home_select == 3);
     press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 4);  // 主页五项：开始/历史/日期时间/设置/联网
+    assert(flow.home_select == 4);
     press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 0);  // 到底回第一条
+    assert(flow.home_select == 5);
+    press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.home_select == 0);
     press(&flow, ARCHERY_KEY_UP);
-    assert(flow.home_select == 4);  // 顶部按上跳到最后一条
+    assert(flow.home_select == 5);
+    press(&flow, ARCHERY_KEY_UP);
+    assert(flow.home_select == 4);
     press(&flow, ARCHERY_KEY_UP);
     assert(flow.home_select == 3);
     press(&flow, ARCHERY_KEY_UP);
@@ -301,6 +307,7 @@ static void test_entry_without_x(void) {
     archery_flow_set_settings(&flow, &settings);
 
     start_session(&flow, 1, 2);
+    flow.settings.record_x = 0;  // start_session 为旧用例强制开启 X，这里恢复关闭
     assert(flow.entry_row == 0);
     assert(archery_target_entry_first_slot(ARCHERY_TARGET_FULL_40, 0) == 1);
     assert(archery_target_entry_first_slot(ARCHERY_TARGET_FULL_40, 1) == 0);
@@ -332,6 +339,7 @@ static void test_triple_target_setup_and_entry(void) {
     archery_settings_t settings;
     archery_settings_defaults(&settings);
     settings.target = ARCHERY_TARGET_TRIPLE_40H;
+    settings.record_x = 1;  // 本用例按含 X 行的完整行数编写
     archery_flow_set_settings(&flow, &settings);
 
     // 主页 -> 新训练
@@ -423,6 +431,7 @@ static void test_triple_target_setup_and_entry(void) {
 static void test_settings_page(void) {
     archery_flow_t flow;
     archery_flow_init(&flow);
+    press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
@@ -617,7 +626,8 @@ static void test_wifi_page(void) {
     press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 4);
+    press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.home_select == 5);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_WIFI_ENTER);
     assert(flow.page == ARCHERY_PAGE_WIFI);
     assert(flow.wifi_mode == 0 && flow.wifi_row == 0);

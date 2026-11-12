@@ -52,6 +52,7 @@ void archery_wifi_set_auto_reconnect(bool enabled);
 void archery_wifi_retry_saved_async(void);
 void archery_wifi_retry_cancel(void);
 bool archery_wifi_retry_active(void);
+bool archery_wifi_resume_pending(void);
 bool archery_wifi_auto_reconnect_enabled(void);
 bool archery_wifi_provisioning(void);
 void archery_wifi_verify_voice_async(void);

@@ -11,6 +11,8 @@ idf_component_register(
          "archery_speech.c"
          "archery_session.c"
          "archery_settings.c"
+         "archery_metro.c"
+         "archery_sight.c"
          "archery_store.c"
          "archery_wifi.c"
          "archery_wifi_store.c"

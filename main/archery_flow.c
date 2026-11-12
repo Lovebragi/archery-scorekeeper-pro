@@ -32,6 +32,16 @@ uint8_t archery_flow_setup_faces_total(const archery_flow_t *flow) {
 
 void archery_flow_init(archery_flow_t *flow) {
     memset(flow, 0, sizeof(*flow));
+    archery_sight_defaults(&flow->sight);
+    flow->metro_bpm = 60;
+    flow->metro_accent = 4;
+    flow->metro_countin = 0;
+    flow->metro_stop_min = 0;
+    flow->metro_volume = 100;
+    flow->range_target = 0;
+    flow->range_mode = 0;
+    flow->range_eye_cm = 60;
+    flow->range_distance_m = 30;
     flow->page = ARCHERY_PAGE_HOME;
     flow->abort_return = ARCHERY_PAGE_ENTRY;
     flow->setup_groups = ARCHERY_DEFAULT_GROUPS;
@@ -257,6 +267,9 @@ static archery_act_t handle_home(archery_flow_t *flow, archery_key_t key) {
             flow->clock_row = 0;
             flow->page = ARCHERY_PAGE_CLOCK;
         } else if (flow->home_select == 3) {
+            flow->tools_row = 0;
+            flow->page = ARCHERY_PAGE_TOOLS;
+        } else if (flow->home_select == 4) {
             flow->settings_row = 0;
             flow->page = ARCHERY_PAGE_SETTINGS;
         } else {
@@ -438,6 +451,263 @@ static archery_act_t handle_wifi_password(archery_flow_t *flow, archery_key_t ke
             return ARCHERY_ACT_WIFI_SCAN;
         }
         break;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_sight(archery_flow_t *flow, archery_key_t key) {
+    const uint8_t count = flow->sight.count ? flow->sight.count : 1u;
+    switch (key) {
+    case ARCHERY_KEY_UP:
+    case ARCHERY_KEY_DOWN: {
+        const int delta = key == ARCHERY_KEY_UP ? 1 : -1;
+        if (flow->sight_edit_field == 1) {
+            int value = flow->sight.items[flow->sight_row].mark_tenths + delta;
+            if (value < 0) value = 0;
+            if (value > 9999) value = 9999;
+            flow->sight.items[flow->sight_row].mark_tenths = (int16_t)value;
+        } else if (flow->sight_edit_field == 2) {
+            int distance = (int)flow->sight.items[flow->sight_row].distance_tenths + delta;
+            if (distance < 10) distance = 10;
+            if (distance > 2000) distance = 2000;
+            flow->sight.items[flow->sight_row].distance_tenths = (uint16_t)distance;
+        } else {
+            int row = (int)flow->sight_row + (key == ARCHERY_KEY_UP ? -1 : 1);
+            if (row < 0) row = (int)count - 1;
+            if (row >= (int)count) row = 0;
+            flow->sight_row = (uint8_t)row;
+        }
+        break;
+    }
+    case ARCHERY_KEY_OK:
+        if (flow->sight_edit_field == 0) {
+            flow->sight_edit_field = flow->sight_row >= 4u ? 2u : 1u;
+        } else if (flow->sight_edit_field == 2) {
+            flow->sight_edit_field = 1;
+        } else {
+            flow->sight_edit_field = 0;
+        }
+        flow->sight_editing = flow->sight_edit_field ? 1u : 0u;
+        break;
+    case ARCHERY_KEY_OK_LONG:
+        if (flow->sight_edit_field != 0) {
+            // 编辑态长按：只清除当前条目，留在瞄具页继续编辑。
+            flow->sight.items[flow->sight_row].mark_tenths = 0;
+            if (flow->sight_row >= 4u) flow->sight.items[flow->sight_row].distance_tenths = 0;
+            return ARCHERY_ACT_SIGHT_SAVE;
+        }
+        flow->sight_editing = 0;
+        flow->sight_edit_field = 0;
+        flow->page = ARCHERY_PAGE_TOOLS;
+        return ARCHERY_ACT_SIGHT_SAVE;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_tools(archery_flow_t *flow, archery_key_t key) {
+    switch (key) {
+    case ARCHERY_KEY_UP:
+        flow->tools_row = flow->tools_row == 0 ? 4u : (uint8_t)(flow->tools_row - 1u);
+        break;
+    case ARCHERY_KEY_DOWN:
+        flow->tools_row = flow->tools_row >= 4u ? 0u : (uint8_t)(flow->tools_row + 1u);
+        break;
+    case ARCHERY_KEY_OK:
+        if (flow->tools_row == 0) {
+            flow->sight_row = 0;
+            flow->sight_editing = 0;
+            flow->sight_edit_field = 0;
+            flow->page = ARCHERY_PAGE_SIGHT;
+        } else if (flow->tools_row == 1) {
+            flow->calc_distance = 40;
+            flow->calc_mode = ARCHERY_SIGHT_LINEAR;
+            flow->page = ARCHERY_PAGE_SIGHT_CALC;
+        } else if (flow->tools_row == 2) {
+            flow->metro_row = 0;
+            flow->metro_edit = 0;
+            flow->page = ARCHERY_PAGE_METRONOME;
+        } else if (flow->tools_row == 3) {
+            flow->range_row = 0;
+            flow->range_edit = 0;
+            flow->page = ARCHERY_PAGE_RANGE_INTRO;
+        } else {
+            flow->ruler_offset = 2;  // 初始下移 2 mm，让 0 标签可见
+            flow->page = ARCHERY_PAGE_RULER;
+        }
+        break;
+    case ARCHERY_KEY_OK_LONG:
+        flow->page = ARCHERY_PAGE_HOME;
+        break;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_ruler(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP) {
+        flow->ruler_offset--;
+        if (flow->ruler_offset < -15) flow->ruler_offset = -15;
+    } else if (key == ARCHERY_KEY_DOWN) {
+        flow->ruler_offset++;
+        if (flow->ruler_offset > 15) flow->ruler_offset = 15;
+    } else if (key == ARCHERY_KEY_OK || key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_TOOLS;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_sight_calc(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP) {
+        if (flow->calc_distance < 90) flow->calc_distance++;
+    } else if (key == ARCHERY_KEY_DOWN) {
+        if (flow->calc_distance > 10) flow->calc_distance--;
+    } else if (key == ARCHERY_KEY_OK) {
+        flow->calc_mode = flow->calc_mode == ARCHERY_SIGHT_LINEAR ? ARCHERY_SIGHT_QUADRATIC
+                                                                  : ARCHERY_SIGHT_LINEAR;
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_TOOLS;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_metronome(archery_flow_t *flow, archery_key_t key) {
+    static const uint8_t stop_values[] = {0, 1, 3, 5, 10, 15};
+    static const uint16_t preset_bpm[] = {40, 60, 90};
+    switch (key) {
+    case ARCHERY_KEY_UP:
+    case ARCHERY_KEY_DOWN: {
+        const int delta = key == ARCHERY_KEY_UP ? 1 : -1;
+        if (!flow->metro_edit) {
+            int row = (int)flow->metro_row + (key == ARCHERY_KEY_UP ? -1 : 1);
+            if (row < 0) row = 6;
+            if (row > 6) row = 0;
+            flow->metro_row = (uint8_t)row;
+            break;
+        }
+        switch (flow->metro_row) {
+        case 1: {
+            int v = (int)flow->metro_bpm + delta;
+            if (v < 30) v = 30;
+            if (v > 240) v = 240;
+            flow->metro_bpm = (uint16_t)v;
+            flow->metro_preset = 0;
+            break;
+        }
+        case 2: {
+            int v = (int)flow->metro_accent + delta;
+            if (v < 1) v = 1;
+            if (v > 16) v = 16;
+            flow->metro_accent = (uint8_t)v;
+            break;
+        }
+        case 3: {
+            int v = (int)flow->metro_countin + delta;
+            if (v < 0) v = 0;
+            if (v > 8) v = 8;
+            flow->metro_countin = (uint8_t)v;
+            break;
+        }
+        case 4: {
+            int v = (int)flow->settings.beep_volume + delta;
+            if (v < 0) v = 0;
+            if (v > 5) v = 5;
+            if (v == flow->settings.beep_volume) break;
+            flow->settings.beep_volume = (uint8_t)v;
+            return ARCHERY_ACT_SETTINGS_CHANGED;
+        }
+        case 5: {
+            uint8_t idx = 0;
+            for (uint8_t i = 0; i < 6; i++) if (stop_values[i] == flow->metro_stop_min) idx = i;
+            if (delta > 0 && idx + 1u < 6u) idx++;
+            if (delta < 0 && idx > 0) idx--;
+            flow->metro_stop_min = stop_values[idx];
+            break;
+        }
+        case 6: {
+            int p = (int)flow->metro_preset + delta;
+            if (p < 0) p = 3;
+            if (p > 3) p = 0;
+            flow->metro_preset = (uint8_t)p;
+            if (p >= 1 && p <= 3) flow->metro_bpm = preset_bpm[p - 1u];
+            break;
+        }
+        default:
+            break;
+        }
+        break;
+    }
+    case ARCHERY_KEY_OK:
+        if (flow->metro_row == 0) return ARCHERY_ACT_METRONOME_TOGGLE;
+        flow->metro_edit = flow->metro_edit ? 0u : 1u;
+        break;
+    case ARCHERY_KEY_OK_LONG:
+        flow->metro_edit = 0;
+        flow->page = ARCHERY_PAGE_TOOLS;
+        return ARCHERY_ACT_METRONOME_STOP;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_range_intro(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_OK) flow->page = ARCHERY_PAGE_RANGE_CONFIG;
+    else if (key == ARCHERY_KEY_OK_LONG) flow->page = ARCHERY_PAGE_TOOLS;
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_range_config(archery_flow_t *flow, archery_key_t key) {
+    switch (key) {
+    case ARCHERY_KEY_UP:
+    case ARCHERY_KEY_DOWN: {
+        const int delta = key == ARCHERY_KEY_UP ? 1 : -1;
+        if (!flow->range_edit) {
+            int row = (int)flow->range_row + (key == ARCHERY_KEY_UP ? -1 : 1);
+            if (row < 0) row = 2;
+            if (row > 2) row = 0;
+            flow->range_row = (uint8_t)row;
+            break;
+        }
+        switch (flow->range_row) {
+        case 0:
+            // 上键增大靶面，下键缩小；0=122, 1=80, 2=60, 3=40全, 4=40半
+            flow->range_target = (uint8_t)((flow->range_target + (delta > 0 ? 4 : 1)) % 5u);
+            flow->range_mode = 0;
+            break;
+        case 1: {
+            int v = (int)flow->range_eye_cm + delta;
+            if (v < 30) v = 30;
+            if (v > 90) v = 90;
+            flow->range_eye_cm = (uint8_t)v;
+            break;
+        }
+        default: break;
+        }
+        break;
+    }
+    case ARCHERY_KEY_OK:
+        if (flow->range_row == 2) {
+            flow->range_edit = 0;
+            flow->page = ARCHERY_PAGE_RANGE_VIEW;
+        } else {
+            flow->range_edit = flow->range_edit ? 0u : 1u;
+        }
+        break;
+    case ARCHERY_KEY_OK_LONG:
+        flow->range_edit = 0;
+        flow->page = ARCHERY_PAGE_TOOLS;
+        break;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_range_view(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP) {
+        // 上键让游标向上：距离减小，靶面在屏幕上变大。
+        if (flow->range_distance_m > 8) flow->range_distance_m--;
+    } else if (key == ARCHERY_KEY_DOWN) {
+        if (flow->range_distance_m < 70) flow->range_distance_m++;
+    } else if (key == ARCHERY_KEY_OK) {
+        flow->page = ARCHERY_PAGE_RANGE_CONFIG;
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_TOOLS;
     }
     return ARCHERY_ACT_NONE;
 }
@@ -858,6 +1128,14 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_TIMER: return handle_timer(flow, key);
     case ARCHERY_PAGE_AUTO_CHECK: return handle_auto_check(flow, key);
     case ARCHERY_PAGE_BETA: return handle_beta(flow, key);
+    case ARCHERY_PAGE_SIGHT: return handle_sight(flow, key);
+    case ARCHERY_PAGE_TOOLS: return handle_tools(flow, key);
+    case ARCHERY_PAGE_RULER: return handle_ruler(flow, key);
+    case ARCHERY_PAGE_SIGHT_CALC: return handle_sight_calc(flow, key);
+    case ARCHERY_PAGE_METRONOME: return handle_metronome(flow, key);
+    case ARCHERY_PAGE_RANGE_INTRO: return handle_range_intro(flow, key);
+    case ARCHERY_PAGE_RANGE_CONFIG: return handle_range_config(flow, key);
+    case ARCHERY_PAGE_RANGE_VIEW: return handle_range_view(flow, key);
     }
     return ARCHERY_ACT_NONE;
 }

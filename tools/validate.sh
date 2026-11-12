@@ -63,12 +63,17 @@ run_static_checks() {
     "${test_dir}/test_archery_session"
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
         tests/test_archery_flow.c main/archery_score.c main/archery_session.c main/archery_clock.c \
-        main/archery_settings.c main/archery_flow.c -o "${test_dir}/test_archery_flow"
+        main/archery_settings.c main/archery_sight.c main/archery_flow.c -o "${test_dir}/test_archery_flow"
     "${test_dir}/test_archery_flow"
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
         tests/test_archery_settings.c main/archery_settings.c main/archery_score.c \
         -o "${test_dir}/test_archery_settings"
     "${test_dir}/test_archery_settings"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_menu_navigation.c main/archery_score.c main/archery_session.c main/archery_clock.c \
+        main/archery_settings.c main/archery_sight.c main/archery_flow.c \
+        -o "${test_dir}/test_menu_navigation"
+    "${test_dir}/test_menu_navigation"
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
         tests/test_archery_record.c main/archery_score.c main/archery_session.c main/archery_clock.c \
         main/archery_history.c -o "${test_dir}/test_archery_record"

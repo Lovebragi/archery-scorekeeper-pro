@@ -627,6 +627,25 @@ void archery_voice_play_countdown(uint8_t number) {
     (void)bsp_audio_write(clip, (size_t)samples * sizeof(clip[0]));
 }
 
+void archery_voice_metronome_click(bool accent, uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    const uint16_t hz = accent ? 1600 : 1100;
+    const int samples = 16000 / hz / 2;
+    int16_t buffer[320];
+    const int amp = volume_percent > 100 ? 6000 : 5000;
+    int phase = 0;
+    for (int i = 0; i < 320; i++) {
+        buffer[i] = phase < samples ? amp : -amp;
+        if (++phase >= samples * 2) phase = 0;
+    }
+    (void)bsp_audio_write(buffer, sizeof(buffer));
+}
+
 void archery_voice_beep_warning(void) {
     if (s_active || s_beep_volume == 0) return;
     if (!s_audio_ready) {
@@ -669,6 +688,7 @@ void archery_voice_prepare_audio(void) {
 }
 
 void archery_voice_play_saved(void) {
+    ESP_LOGI(TAG, "play_saved vol=%u active=%d ready=%d", (unsigned)s_beep_volume, (int)s_active, (int)s_audio_ready);
     if (s_active || s_beep_volume == 0) return;
     if (!s_audio_ready) {
         if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) {
@@ -683,6 +703,7 @@ void archery_voice_play_saved(void) {
 }
 
 void archery_voice_play_config_failed(void) {
+    ESP_LOGI(TAG, "play_failed vol=%u active=%d ready=%d", (unsigned)s_beep_volume, (int)s_active, (int)s_audio_ready);
     if (s_active || s_beep_volume == 0) return;
     if (!s_audio_ready) {
         if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) {
