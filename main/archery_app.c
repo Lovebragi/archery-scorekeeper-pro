@@ -239,8 +239,21 @@ static bool try_saved_wifi(archery_key_t key) {
     char pass[ARCHERY_WIFI_PASS_SIZE];
     const bool found =
         archery_wifi_store_lookup(s_wifi_view.ssid[row], pass, sizeof(pass));
-    ESP_LOGI(TAG, "saved wifi row=%u found=%d", (unsigned)row, (int)found);
+    ESP_LOGI(TAG, "saved wifi row=%u found=%d passlen=%u", (unsigned)row,
+             (int)found, (unsigned)strlen(pass));
     if (!found) return false;
+    if (pass[0] == ' ') {
+        // 旧记录可能保存了空密码（安全网络无法用空密码连接），直接让用户重输。
+        s_flow.page = ARCHERY_PAGE_WIFI_PASSWORD;
+        s_flow.wifi_mode = 1;
+        s_flow.wifi_target = row;
+        s_flow.wifi_pw_pos = 0;
+        s_flow.wifi_pw_len = 0;
+        memset(s_flow.wifi_password, 0, sizeof(s_flow.wifi_password));
+        snprintf(s_wifi_view.message, sizeof(s_wifi_view.message), "请重新输入密码");
+        redraw();
+        return true;
+    }
     // 回到联网状态页，让"正在连接 / 已连接"可见。
     s_flow.wifi_mode = 0;
     s_flow.wifi_row = 0;
@@ -249,6 +262,15 @@ static bool try_saved_wifi(archery_key_t key) {
     if (err == ESP_OK) {
         s_saved_pending = true;
         s_saved_row = row;
+    } else {
+        // 保存的密码无法发起连接：直接回到密码页，允许重输。
+        s_flow.page = ARCHERY_PAGE_WIFI_PASSWORD;
+        s_flow.wifi_mode = 1;
+        s_flow.wifi_target = row;
+        s_flow.wifi_pw_pos = 0;
+        s_flow.wifi_pw_len = 0;
+        memset(s_flow.wifi_password, 0, sizeof(s_flow.wifi_password));
+        snprintf(s_wifi_view.message, sizeof(s_wifi_view.message), "保存的密码连接失败，请重输");
     }
     redraw();
     return true;

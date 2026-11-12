@@ -2,9 +2,13 @@
 # Printable ASCII U+0020..U+007E is always included implicitly.
 # Regenerate with tools/gen_lvgl_text_font.py --scan main/archery_*.c; tests/test_archery_fonts.py fails when UI text needs a missing glyph.
 U+00B7  # ·
+U+00BB  # »
+U+00BF  # ¿
 U+00D7  # ×
+U+00EF  # ï
 U+2026  # …
 U+2248  # ≈
+U+3002  # 。
 U+4E00  # 一
 U+4E03  # 七
 U+4E09  # 三
@@ -32,6 +36,7 @@ U+4F11  # 休
 U+4F1A  # 会
 U+4F30  # 估
 U+4F38  # 伸
+U+4F46  # 但
 U+4F4D  # 位
 U+4F4E  # 低
 U+4F4F  # 住
@@ -72,6 +77,8 @@ U+521D  # 初
 U+5220  # 删
 U+522B  # 别
 U+5230  # 到
+U+5236  # 制
+U+5237  # 刷
 U+523B  # 刻
 U+524D  # 前
 U+529F  # 功
@@ -95,10 +102,12 @@ U+53D6  # 取
 U+53E3  # 口
 U+53EA  # 只
 U+53EF  # 可
+U+53F0  # 台
 U+53F2  # 史
 U+53F7  # 号
 U+5408  # 合
 U+540C  # 同
+U+540D  # 名
 U+540E  # 后
 U+5411  # 向
 U+5417  # 吗
@@ -194,12 +203,14 @@ U+634F  # 捏
 U+6362  # 换
 U+636E  # 据
 U+63A5  # 接
+U+63A7  # 控
 U+63A8  # 推
 U+63CF  # 描
 U+63D0  # 提
 U+63E1  # 握
 U+64A4  # 撤
 U+652F  # 支
+U+6536  # 收
 U+6539  # 改
 U+653E  # 放
 U+6548  # 效
@@ -262,6 +273,7 @@ U+72D7  # 狗
 U+73AF  # 环
 U+7406  # 理
 U+7528  # 用
+U+7531  # 由
 U+7535  # 电
 U+754C  # 界
 U+7559  # 留
@@ -283,6 +295,7 @@ U+786E  # 确
 U+793A  # 示
 U+79BB  # 离
 U+79D2  # 秒
+U+79F0  # 称
 U+7A0D  # 稍
 U+7A7A  # 空
 U+7ACB  # 立
@@ -307,6 +320,7 @@ U+7EE9  # 绩
 U+7EEA  # 绪
 U+7EED  # 续
 U+7F16  # 编
+U+7F3A  # 缺
 U+7F51  # 网
 U+7F6E  # 置
 U+8003  # 考
@@ -349,6 +363,7 @@ U+8D25  # 败
 U+8D5B  # 赛
 U+8D85  # 超
 U+8DDD  # 距
+U+8DEF  # 路
 U+8DF3  # 跳
 U+8EAB  # 身
 U+8F6C  # 转
@@ -388,6 +403,7 @@ U+9632  # 防
 U+9644  # 附
 U+9664  # 除
 U+9700  # 需
+U+9760  # 靠
 U+9762  # 面
 U+9776  # 靶
 U+97F3  # 音
@@ -405,4 +421,5 @@ U+FF08  # （
 U+FF09  # ）
 U+FF0C  # ，
 U+FF1A  # ：
+U+FF1B  # ；
 U+FF1F  # ？

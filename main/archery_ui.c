@@ -1038,7 +1038,6 @@ static void render_wifi(lv_obj_t *scr, const archery_flow_t *flow) {
     }
 
     if (flow->wifi_mode == 2) {
-        add_title(scr, "连接 Wi-Fi");
         if (view->state == ARCHERY_WIFI_CONNECTING) {
             centered_label(scr, "正在连接", ARCHERY_FONT_TITLE, C_TEXT, 96);
             centered_label(scr, view->ssid[view->selected][0] ? view->ssid[view->selected]
