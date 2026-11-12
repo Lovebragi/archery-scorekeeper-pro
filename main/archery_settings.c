@@ -244,6 +244,7 @@ static bool decode_v1(archery_settings_t *settings, const uint8_t *buffer) {
     const uint16_t expected = (uint16_t)(buffer[6] | ((uint16_t)buffer[7] << 8));
     if (crc16_ccitt(buffer, SETTINGS_CRC_BYTES_V1) != expected) return false;
     archery_settings_t decoded;
+    archery_settings_defaults(&decoded);
     decoded.target = ARCHERY_TARGET_HALF_40;
     decoded.rotate = ARCHERY_SETTINGS_DEFAULT_ROTATE;
     decoded.brightness = buffer[2];
@@ -265,6 +266,7 @@ static bool decode_v2(archery_settings_t *settings, const uint8_t *buffer) {
     const uint16_t expected = (uint16_t)(buffer[7] | ((uint16_t)buffer[8] << 8));
     if (crc16_ccitt(buffer, SETTINGS_CRC_BYTES_V2) != expected) return false;
     archery_settings_t decoded;
+    archery_settings_defaults(&decoded);
     decoded.target = buffer[2];
     decoded.rotate = ARCHERY_SETTINGS_DEFAULT_ROTATE;
     decoded.brightness = buffer[3];
@@ -321,6 +323,7 @@ bool archery_settings_decode(archery_settings_t *settings,
     }
 
     archery_settings_t decoded;
+    archery_settings_defaults(&decoded);
     decoded.countdown_voice = ARCHERY_SETTINGS_DEFAULT_COUNTDOWN_VOICE;
     decoded.roll_entry = ARCHERY_SETTINGS_DEFAULT_ROLL_ENTRY;
     if (buffer[1] == SETTINGS_VERSION) {
