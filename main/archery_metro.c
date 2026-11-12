@@ -45,7 +45,7 @@ bool archery_metro_load(archery_metro_config_t *config) {
     config->stop_min = buffer[6];
     config->volume = buffer[7];
     config->preset = buffer[8];
-    config->count_voice = buffer[9] < 3u ? buffer[9] : 0u;
+    config->count_voice = buffer[9] < 6u ? buffer[9] : 0u;
     if (config->bpm < 30 || config->bpm > 240) config->bpm = 60;
     if (config->accent < 1 || config->accent > 16) config->accent = 4;
     if (config->countin > 8) config->countin = 0;

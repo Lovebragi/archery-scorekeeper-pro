@@ -361,7 +361,24 @@ static void handle_wifi_event(void) {
     redraw();
 }
 
+static bool cat_voice_enabled(void) {
+    return s_flow.settings.countdown_voice == 7u;
+}
+
 static void beep_sequence(int count) {
+    if (cat_voice_enabled()) {
+        const uint8_t volume = (uint8_t)(s_flow.settings.beep_volume * 20u);
+        if (count >= 3) {
+            archery_voice_cat_three(volume);
+        } else if (count == 2) {
+            archery_voice_cat_meow(volume);
+            vTaskDelay(pdMS_TO_TICKS(200));
+            archery_voice_cat_meow(volume);
+        } else {
+            archery_voice_cat_meow(volume);
+        }
+        return;
+    }
     for (int i = 0; i < count; i++) {
         archery_voice_preview_beep();
         if (i + 1 < count) vTaskDelay(pdMS_TO_TICKS(400));
@@ -377,6 +394,16 @@ static void countdown_voice_task(void *arg) {
     uint8_t number;
     for (;;) {
         if (xQueueReceive(s_countdown_q, &number, portMAX_DELAY) == pdTRUE) {
+            if (cat_voice_enabled()) {
+                const uint8_t volume = (uint8_t)(s_flow.settings.beep_volume * 20u);
+                if (number == 0xFFu) archery_voice_beep_warning();
+                else if (number == 0xFEu) beep_sequence(2);
+                else if (number == 0xFDu) beep_sequence(1);
+                else if (number == 0xFCu) archery_voice_cat_three(volume);
+                else if (number == 10u) archery_voice_cat_purr(volume);
+                // 猫叫模式：倒计时只播一次 10 秒呼噜，1～9 不再逐秒报数。
+                continue;
+            }
             switch (number) {
             case 0xFFu: archery_voice_beep_warning(); break;
             case 0xFEu: beep_sequence(2); break;
@@ -545,11 +572,18 @@ static void metro_tick(void) {
         const uint8_t beat = (uint8_t)(music_tick % accent + 1u);
         s_flow.metro_beat = beat;
         const uint8_t volume = (uint8_t)(s_flow.settings.beep_volume * 20u);
-        if (s_flow.metro_count_voice) {
+        if (s_flow.metro_count_voice == 5u) {
+            if (beat == 1u) archery_voice_cat_meow_fast(volume);
+            else archery_voice_metronome_click(false, volume);
+        } else if (s_flow.metro_count_voice) {
             if (beat == 1u) {
                 const uint8_t bar = (uint8_t)((music_tick / accent) % 4u + 1u);
                 if (s_flow.metro_count_voice == 2u) {
                     archery_voice_metronome_bao_bar(bar, volume);
+                } else if (s_flow.metro_count_voice == 3u) {
+                    archery_voice_metronome_xiaolin_bar(bar, volume);
+                } else if (s_flow.metro_count_voice == 4u) {
+                    archery_voice_metronome_xiaozhang_bar(bar, volume);
                 } else {
                     archery_voice_metronome_bar(bar, volume);
                 }
@@ -669,6 +703,12 @@ static void handle_key(archery_key_t key) {
             if (!s_flow.metro_running) {
                 if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 2u) {
                     archery_voice_metronome_bao_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
+                } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 3u) {
+                    archery_voice_metronome_xiaolin_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
+                } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 4u) {
+                    archery_voice_metronome_xiaozhang_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
+                } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 5u) {
+                    archery_voice_cat_meow_fast((uint8_t)(s_flow.settings.beep_volume * 20u));
                 } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 1u) {
                     archery_voice_metronome_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
                 } else {

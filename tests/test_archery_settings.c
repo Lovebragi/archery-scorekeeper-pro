@@ -113,6 +113,12 @@ static void test_adjust(void) {
     assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.countdown_voice == 4);
     assert(archery_settings_adjust(&settings, 6, 1));
+    assert(settings.countdown_voice == 5);
+    assert(archery_settings_adjust(&settings, 6, 1));
+    assert(settings.countdown_voice == 6);
+    assert(archery_settings_adjust(&settings, 6, 1));
+    assert(settings.countdown_voice == 7);
+    assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.countdown_voice == 0);
     assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.countdown_voice == 1);

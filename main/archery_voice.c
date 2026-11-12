@@ -5,7 +5,12 @@
 #include "archery_countdown_system_pcm.h"
 #include "archery_countdown_bao_pcm.h"
 #include "archery_countdown_male_pcm.h"
+#include "archery_countdown_xiaolin_pcm.h"
+#include "archery_countdown_xiaozhang_pcm.h"
 #include "archery_bar_voice_pcm.h"
+#include "archery_bar_voice_xiaolin_pcm.h"
+#include "archery_bar_voice_xiaozhang_pcm.h"
+#include "archery_cat_pcm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -555,7 +560,7 @@ static void prewarm_task(void *arg) {
     vTaskDelete(NULL);
 }
 
-void archery_voice_set_countdown_voice(uint8_t mode) { s_countdown_mode = mode > 4 ? 4 : mode; }
+void archery_voice_set_countdown_voice(uint8_t mode) { s_countdown_mode = mode > 7 ? 7 : mode; }
 
 void archery_voice_set_beep_volume(uint8_t percent) {
     s_beep_volume = percent > 100 ? 100 : percent;
@@ -617,7 +622,9 @@ void archery_voice_play_countdown(uint8_t number) {
     if (s_countdown_mode == 1) clip = system_clip(number, &samples);
     else if (s_countdown_mode == 2) clip = countdown_clip(number, &samples);
     else if (s_countdown_mode == 3) clip = bao_clip(number, &samples);
-    else clip = archery_countdown_male_clip(number, &samples);
+    else if (s_countdown_mode == 4) clip = archery_countdown_male_clip(number, &samples);
+    else if (s_countdown_mode == 5) clip = archery_countdown_xiaolin_clip(number, &samples);
+    else clip = archery_countdown_xiaozhang_clip(number, &samples);
     if (!clip || samples == 0) return;
     if (!s_audio_ready) {
         if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) {
@@ -661,6 +668,32 @@ void archery_voice_metronome_bar(uint8_t number, uint8_t volume_percent) {
     (void)bsp_audio_write(clip, (size_t)samples * sizeof(clip[0]));
 }
 
+void archery_voice_metronome_xiaolin_bar(uint8_t number, uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    unsigned samples = 0;
+    const int16_t *clip = archery_bar_voice_xiaolin_clip(number, &samples);
+    if (!clip || samples == 0) return;
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(clip, (size_t)samples * sizeof(clip[0]));
+}
+
+void archery_voice_metronome_xiaozhang_bar(uint8_t number, uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    unsigned samples = 0;
+    const int16_t *clip = archery_bar_voice_xiaozhang_clip(number, &samples);
+    if (!clip || samples == 0) return;
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(clip, (size_t)samples * sizeof(clip[0]));
+}
+
 void archery_voice_metronome_bao_bar(uint8_t number, uint8_t volume_percent) {
     if (volume_percent == 0) return;
     if (!s_audio_ready) {
@@ -680,6 +713,46 @@ void archery_voice_metronome_bao_bar(uint8_t number, uint8_t volume_percent) {
     }
     bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
     (void)bsp_audio_write(buffer, (size_t)count * sizeof(buffer[0]));
+}
+
+void archery_voice_cat_meow(uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(archery_cat_meow, sizeof(archery_cat_meow));
+}
+
+void archery_voice_cat_meow_fast(uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(archery_cat_meow_fast, sizeof(archery_cat_meow_fast));
+}
+
+void archery_voice_cat_three(uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(archery_cat_three, sizeof(archery_cat_three));
+}
+
+void archery_voice_cat_purr(uint8_t volume_percent) {
+    if (volume_percent == 0) return;
+    if (!s_audio_ready) {
+        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
+        s_audio_ready = true;
+    }
+    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
+    (void)bsp_audio_write(archery_cat_purr, sizeof(archery_cat_purr));
 }
 
 void archery_voice_beep_warning(void) {

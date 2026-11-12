@@ -467,7 +467,7 @@ static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
             break;
         }
         default:
-            snprintf(value, sizeof(value), "%s", flow->metro_count_voice == 1u ? "男声" : (flow->metro_count_voice == 2u ? "豆包" : "click"));
+            snprintf(value, sizeof(value), "%s", flow->metro_count_voice == 1u ? "男声" : (flow->metro_count_voice == 2u ? "豆包" : (flow->metro_count_voice == 3u ? "小林" : (flow->metro_count_voice == 4u ? "小章" : (flow->metro_count_voice == 5u ? "猫叫" : "click")))));
             break;
         }
         lv_obj_t *val = make_label(card, value,
@@ -1221,9 +1221,9 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
                          (unsigned)flow->settings.timer_seconds);
             }
         } else if (row == 6) {
-            static const char *const voicing[] = {"关", "系统", "小豆", "豆包", "男声"};
+            static const char *const voicing[] = {"关", "系统", "小豆", "豆包", "男声", "小林", "小章", "猫叫"};
             snprintf(value, sizeof(value), "%s",
-                     voicing[flow->settings.countdown_voice <= 4u
+                     voicing[flow->settings.countdown_voice <= 7u
                                  ? flow->settings.countdown_voice : 0u]);
         } else if (row == 7) {
             snprintf(value, sizeof(value), "%s",

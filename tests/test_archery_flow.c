@@ -494,6 +494,12 @@ static void test_settings_page(void) {
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.countdown_voice == 4);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
+    assert(flow.settings.countdown_voice == 5);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
+    assert(flow.settings.countdown_voice == 6);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
+    assert(flow.settings.countdown_voice == 7);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.countdown_voice == 0);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.countdown_voice == 1);
