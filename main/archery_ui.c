@@ -1250,17 +1250,23 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
 
 static void render_beta(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "Beta 功能测试");
-    static const char *names[] = {"自动训练模式", "自动重连网络"};
+    static const char *names[] = {"自动训练模式", "自动重连网络", "播放音乐"};
     char value[16];
-    for (uint8_t row = 0; row < 2; row++) {
-        const archery_rect_t rect = {20, (int16_t)(80 + row * 40), 200, 32};
+#ifdef ARCHERY_MUSIC_EMBEDDED
+    const uint8_t rows = 3;
+#else
+    const uint8_t rows = 2;
+#endif
+    for (uint8_t row = 0; row < rows; row++) {
+        const archery_rect_t rect = {20, (int16_t)(72 + row * 38), 200, 32};
         const bool selected = flow->beta_row == row;
         lv_obj_t *card = make_card(scr, rect, selected, false);
         lv_obj_t *name = make_label(card, names[row], ARCHERY_FONT_BODY,
                                     selected ? C_GOLD : C_TEXT);
         lv_obj_align(name, LV_ALIGN_LEFT_MID, 12, 0);
-        const bool on = row == 0 ? flow->settings.auto_mode : flow->settings.auto_reconnect;
-        snprintf(value, sizeof(value), "%s", on ? "开" : "关");
+        if (row == 0) snprintf(value, sizeof(value), "%s", flow->settings.auto_mode ? "开" : "关");
+        else if (row == 1) snprintf(value, sizeof(value), "%s", flow->settings.auto_reconnect ? "开" : "关");
+        else snprintf(value, sizeof(value), "%s", flow->music_playing ? "停止" : "播放");
         lv_obj_t *state = make_label(card, value, ARCHERY_FONT_BODY,
                                      selected ? C_GOLD : C_TEXT);
         lv_obj_align(state, LV_ALIGN_RIGHT_MID, -12, 0);

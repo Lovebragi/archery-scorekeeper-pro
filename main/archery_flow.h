@@ -88,6 +88,7 @@ typedef enum {
     ARCHERY_ACT_WIFI_CONNECT,      // 连接选中的网络（flow->wifi_row）
     ARCHERY_ACT_WIFI_PROVISION,    // 打开手机扫码配网（设备热点 + 网页）
     ARCHERY_ACT_WIFI_SYNC_TIME,    // 立即用 NTP 对时
+    ARCHERY_ACT_MUSIC_TOGGLE,      // Beta：播放/停止内置音乐
     ARCHERY_ACT_WIFI_STOP,         // 断开/停止配网
     ARCHERY_ACT_WIFI_LEAVE,
     ARCHERY_ACT_AUTO_CHECK,
@@ -159,6 +160,7 @@ typedef struct {
     uint8_t metro_volume;
     uint8_t metro_preset;
     uint8_t metro_count_voice;
+    uint8_t music_playing;
     uint8_t range_row;
     uint8_t range_edit;
     uint8_t range_target;

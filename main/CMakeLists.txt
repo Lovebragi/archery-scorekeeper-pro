@@ -1,3 +1,8 @@
+set(ARCHERY_MUSIC_EMBED_FILES)
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/assets/xixige_22k.pcm")
+    list(APPEND ARCHERY_MUSIC_EMBED_FILES "assets/xixige_22k.pcm")
+endif()
+
 idf_component_register(
     SRCS "main.c"
          "archery_app.c"
@@ -34,6 +39,7 @@ idf_component_register(
          "demo_ble.c"
          "demo_low_power.c"
     INCLUDE_DIRS "."
+    EMBED_FILES ${ARCHERY_MUSIC_EMBED_FILES}
     REQUIRES bsp bt esp_event esp_hw_support esp_http_server esp_netif esp_timer esp-tls esp_wifi lwip mbedtls nvs_flash
 )
 

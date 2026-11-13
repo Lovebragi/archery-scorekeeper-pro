@@ -214,14 +214,25 @@ void archery_flow_enter_setup(archery_flow_t *flow) {
 static archery_act_t handle_beta(archery_flow_t *flow, archery_key_t key) {
     switch (key) {
     case ARCHERY_KEY_UP:
+#ifdef ARCHERY_MUSIC_EMBEDDED
+        flow->beta_row = flow->beta_row == 0 ? 2u : (uint8_t)(flow->beta_row - 1u);
+#else
         flow->beta_row = flow->beta_row == 0 ? 1u : 0u;
+#endif
         break;
     case ARCHERY_KEY_DOWN:
+#ifdef ARCHERY_MUSIC_EMBEDDED
+        flow->beta_row = flow->beta_row >= 2u ? 0u : (uint8_t)(flow->beta_row + 1u);
+#else
         flow->beta_row = flow->beta_row == 0 ? 1u : 0u;
+#endif
         break;
     case ARCHERY_KEY_OK:
         if (flow->beta_row == 0) flow->settings.auto_mode = flow->settings.auto_mode ? 0u : 1u;
-        else flow->settings.auto_reconnect = flow->settings.auto_reconnect ? 0u : 1u;
+        else if (flow->beta_row == 1) flow->settings.auto_reconnect = flow->settings.auto_reconnect ? 0u : 1u;
+#ifdef ARCHERY_MUSIC_EMBEDDED
+        else return ARCHERY_ACT_MUSIC_TOGGLE;
+#endif
         return ARCHERY_ACT_SETTINGS_CHANGED;
     case ARCHERY_KEY_OK_LONG:
         flow->settings_row = 11;

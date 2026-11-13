@@ -22,6 +22,7 @@
 #include "archery_wifi.h"
 #include "archery_wifi_store.h"
 #include "archery_wifi_view.h"
+#include "bsp_audio.h"
 #include "bsp_battery.h"
 #include "bsp_button.h"
 #include "bsp_display.h"
@@ -38,6 +39,7 @@
 #include <string.h>
 
 static const char *TAG = "archery_app";
+static void music_toggle(void);
 
 #define KEY_QUEUE_DEPTH 8
 #define BATTERY_POLL_MS 10000
@@ -769,6 +771,9 @@ static void handle_key(archery_key_t key) {
     case ARCHERY_ACT_WIFI_SYNC_TIME:
         (void)archery_wifi_sync_time();
         break;
+    case ARCHERY_ACT_MUSIC_TOGGLE:
+        music_toggle();
+        break;
     case ARCHERY_ACT_WIFI_STOP:
         if (archery_wifi_provisioning()) {
             (void)archery_wifi_stop_provisioning();
@@ -1313,6 +1318,57 @@ static void apply_voice_result(const archery_voice_result_t *result) {
         }
     }
     redraw();
+}
+
+#ifdef ARCHERY_MUSIC_EMBEDDED
+extern const uint8_t xixige_pcm_start[] asm("_binary_xixige_22k_pcm_start");
+extern const uint8_t xixige_pcm_end[] asm("_binary_xixige_22k_pcm_end");
+static TaskHandle_t s_music_task;
+static volatile bool s_music_stop;
+
+static void music_task(void *arg) {
+    (void)arg;
+    if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(22050, 16, 1) != ESP_OK) {
+        s_flow.music_playing = 0;
+        s_music_task = NULL;
+        vTaskDelete(NULL);
+        return;
+    }
+    bsp_audio_set_volume(s_flow.settings.beep_volume * 20u);
+    const uint8_t *p = xixige_pcm_start;
+    while (p < xixige_pcm_end && !s_music_stop) {
+        size_t chunk = (size_t)(xixige_pcm_end - p);
+        if (chunk > 2048u) chunk = 2048u;
+        if (bsp_audio_write(p, chunk) != ESP_OK) break;
+        p += chunk;
+    }
+    (void)bsp_audio_set_format(16000, 16, 1);
+    s_flow.music_playing = 0;
+    s_music_task = NULL;
+    redraw();
+    vTaskDelete(NULL);
+}
+#endif
+
+static void music_toggle(void) {
+#ifdef ARCHERY_MUSIC_EMBEDDED
+    if (s_music_task) {
+        s_music_stop = true;
+        s_flow.music_playing = 0;
+        redraw();
+        return;
+    }
+    s_music_stop = false;
+    s_flow.music_playing = 1;
+    if (xTaskCreate(music_task, "music", 8192, NULL, 3, &s_music_task) != pdPASS) {
+        s_music_task = NULL;
+        s_flow.music_playing = 0;
+    }
+    redraw();
+#else
+    s_flow.music_playing = 0;
+    redraw();
+#endif
 }
 
 static void worker_task(void *argument) {
