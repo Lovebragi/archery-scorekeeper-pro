@@ -30,6 +30,7 @@ typedef enum {
     ARCHERY_PAGE_TIMER,
     ARCHERY_PAGE_AUTO_CHECK,
     ARCHERY_PAGE_BETA,
+    ARCHERY_PAGE_MANUAL,
     ARCHERY_PAGE_SIGHT,
     ARCHERY_PAGE_TOOLS,
     ARCHERY_PAGE_RULER,
@@ -128,7 +129,9 @@ typedef struct {
     uint8_t entry_face;     // 三联靶当前录入的靶面 0..2
     uint8_t entry_row;      // 0..槽位数-1 为环值行，槽位数为提交行
     archery_settings_t settings;  // 靶型与省电设置（由上层从 NVS 载入）
-    uint8_t settings_row;   // 0 = 靶型, 1 = 方向, 2 = 亮度, 3 = 息屏, 4 = 日期时间, 5 = 返回
+    uint8_t settings_row;
+    int16_t manual_scroll;
+    uint8_t manual_page;   // 0 = 靶型, 1 = 方向, 2 = 亮度, 3 = 息屏, 4 = 日期时间, 5 = 返回
     uint32_t clock_now;     // 上层每次处理按键/刷新界面前同步的当前时间
     archery_datetime_t clock_fields;  // 手动对时页正在编辑的字段
     uint8_t clock_row;      // 0..4 = 年/月/日/时/分

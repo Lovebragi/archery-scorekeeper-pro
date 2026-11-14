@@ -62,6 +62,8 @@ void archery_flow_init(archery_flow_t *flow) {
     flow->entry_row = 0;
     flow->entry_face = 0;
     flow->settings_row = 0;
+    flow->manual_scroll = 0;
+    flow->manual_page = 0;
     flow->clock_fields.year = ARCHERY_CLOCK_EPOCH_YEAR;
     flow->clock_fields.month = 1;
     flow->clock_fields.day = 1;
@@ -288,6 +290,8 @@ static archery_act_t handle_home(archery_flow_t *flow, archery_key_t key) {
             flow->page = ARCHERY_PAGE_TOOLS;
         } else if (flow->home_select == 4) {
             flow->settings_row = 0;
+    flow->manual_scroll = 0;
+    flow->manual_page = 0;
             flow->page = ARCHERY_PAGE_SETTINGS;
         } else {
             flow->wifi_mode = 0;
@@ -601,6 +605,20 @@ static archery_act_t handle_sight_calc(archery_flow_t *flow, archery_key_t key) 
     return ARCHERY_ACT_NONE;
 }
 
+static archery_act_t handle_manual(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP) {
+        if (flow->manual_page > 0) flow->manual_page--;
+    } else if (key == ARCHERY_KEY_DOWN) {
+        if (flow->manual_page < 12u) flow->manual_page++;
+    } else if (key == ARCHERY_KEY_OK) {
+        if (flow->manual_page < 12u) flow->manual_page++;
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_SETTINGS;
+        flow->settings_row = 12;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
 static archery_act_t handle_metronome(archery_flow_t *flow, archery_key_t key) {
     static const uint8_t stop_values[] = {0, 1, 3, 5, 10, 15};
     static const uint16_t preset_bpm[] = {40, 60, 90};
@@ -895,6 +913,12 @@ static archery_act_t handle_settings(archery_flow_t *flow, archery_key_t key) {
         if (flow->settings_row == 11u) {
             flow->beta_row = 0;
             flow->page = ARCHERY_PAGE_BETA;
+            break;
+        }
+        if (flow->settings_row == 12u) {
+            flow->manual_scroll = 0;
+    flow->manual_page = 0;
+            flow->page = ARCHERY_PAGE_MANUAL;
             break;
         }
         if (flow->settings_row < ARCHERY_SETTINGS_ROWS &&
@@ -1263,6 +1287,7 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_TIMER: return handle_timer(flow, key);
     case ARCHERY_PAGE_AUTO_CHECK: return handle_auto_check(flow, key);
     case ARCHERY_PAGE_BETA: return handle_beta(flow, key);
+    case ARCHERY_PAGE_MANUAL: return handle_manual(flow, key);
     case ARCHERY_PAGE_SIGHT: return handle_sight(flow, key);
     case ARCHERY_PAGE_TOOLS: return handle_tools(flow, key);
     case ARCHERY_PAGE_RULER: return handle_ruler(flow, key);

@@ -55,6 +55,10 @@ static lv_obj_t *s_ruler_draw_obj;
 static int16_t s_ruler_draw_offset;
 static uint8_t s_ruler_draw_mode;
 static int16_t s_ruler_draw_angle;
+static lv_obj_t *s_ruler_edge_label;
+static lv_obj_t *s_manual_label;
+static int s_manual_max_scroll;
+static lv_timer_t *s_manual_measure_timer;
 static lv_obj_t *s_timer_hint;
 static const archery_wifi_view_t *s_wifi_view;
 
@@ -350,7 +354,7 @@ static void ruler_draw_text(lv_layer_t *layer, int x, int y, const char *text, u
     d.font = ARCHERY_FONT_BODY;
     d.color = lv_color_hex(color);
     d.text = text;
-    lv_area_t area = {x, y, x + 60, y + 22};
+    lv_area_t area = {x, y, x + 140, y + 22};
     lv_draw_label(layer, &d, &area);
 }
 
@@ -401,6 +405,8 @@ static void ruler_draw_cb(lv_event_t *e) {
         const int dx = (int)(tanf((float)s_ruler_draw_angle / 10.0f * 3.14159265f / 180.0f) * 320.0f);
         ruler_draw_line(layer, cx - dx, 0, cx, 320, C_GOLD, 2);
         ruler_draw_line(layer, cx - 2, 318, cx + 2, 318, C_GOLD, 3);
+        // 右侧固定边：测量时贴紧靶面；白线白字。
+        ruler_draw_line(layer, 237, 0, 237, 320, 0xFFFFFF, 2);
         const int at = s_ruler_draw_angle < 0 ? -s_ruler_draw_angle : s_ruler_draw_angle;
         snprintf(text, sizeof(text), "%s%d.%d°", s_ruler_draw_angle < 0 ? "-" : "", at / 10, at % 10);
         ruler_draw_text(layer, 8, 4, text, C_GOLD);
@@ -420,6 +426,50 @@ static void render_ruler(lv_obj_t *scr, const archery_flow_t *flow) {
     lv_obj_set_style_pad_all(canvas, 0, 0);
     lv_obj_remove_flag(canvas, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_event_cb(canvas, ruler_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
+
+    // 横屏使用时的提示：整行旋转 90°，贴在右侧白线内侧。
+    lv_obj_t *tip = lv_label_create(scr);
+    lv_label_set_text(tip, "此边贴紧靶面，设备与靶面垂直");
+    lv_obj_set_style_text_font(tip, ARCHERY_FONT_BODY, 0);
+    lv_obj_set_style_text_color(tip, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_bg_opa(tip, LV_OPA_TRANSP, 0);
+    lv_obj_set_size(tip, 280, 22);
+    lv_obj_set_pos(tip, 85, 149);
+    lv_obj_set_style_transform_pivot_x(tip, 140, 0);
+    lv_obj_set_style_transform_pivot_y(tip, 11, 0);
+    lv_obj_set_style_transform_rotation(tip, 2700, 0);
+    lv_obj_remove_flag(tip, LV_OBJ_FLAG_SCROLLABLE);
+    s_ruler_edge_label = tip;
+    if (flow->ruler_mode == 0) lv_obj_add_flag(tip, LV_OBJ_FLAG_HIDDEN);
+}
+
+static const char *const manual_pages[] = {
+    "AI Passport 射箭计分器\n\n一、基本操作\n上/下键：选择、调值\n确定键：进入、编辑、提交\n长按确定：保存并返回\n电源键：长按 0.5 秒开机\n约 2 秒关机\n息屏后按任意功能键唤醒",
+    "二、主页\n开始训练  历史记录\n日期时间  射箭工具\n设置  联网\n\n三、开始训练\n设置组数和每组箭数\n上/下调各环数量\n确定进入下一项\n提交后看本组和累计",
+    "四、语音录靶\n先在设置打开语音录靶\n并在配网页填写 API Key\n录入页按住上键说话\n松手后识别，例如：\n十环三、九环二、脱靶一\n十环两个、八环四个\n剩下都是九环\n识别和修正都在设备完成",
+    "五、每组计时\n设置→每组计时\n关、20、30、40 秒每支\n开始后先准备，再倒计时\n最后十秒有语音\n\n六、历史记录\n保存最近 300 次训练\n可按全部、今天、最近七天筛选\n手机配网页可导出 CSV",
+    "七、射箭工具\n主页→射箭工具\n包含瞄具刻度、刻度估算、\n节拍器、测距、参考尺\n\n瞄具刻度：记录 18/30/50/70 米\n和两个自定义距离\n蓝框有效，红框数据不足\n\n刻度估算：线性或三点插值\n结果仅供参考",
+    "节拍器\n可设置 BPM、重音、预备拍、\n自动停止和预设\n提示音：click、男声、小林、\n小章、豆包、猫叫\n\n八、测距参数\n靶面、眼屏距离、\n眼屏距离校准、靶面倾角、\n开始测距",
+    "测距靶面\n40半 20cm  40全 40cm\n80半 40cm（6～10环）\n80全 80cm  122全 122cm\n\n刻度页\n下面黄线对靶下沿\n上面黄线卡靶上沿\n上/下键每次移动游标 1 像素\n长按连续移动",
+    "测距计算\n距离按两条黄线之间的净空\n不包含线宽\n显示 0.1 米\n\n眼屏距离校准\n建议使用 80 全靶\n在 18 米距离校准\n调整游标对准靶子上沿\n保存后反算眼屏距离\n换靶面不会清除校准",
+    "九、靶面倾角\n设置范围 0～15 度\n0 度：靶面垂直地面\n15 度：上沿向上倾斜\n设备会按投影高度修正\n\n十、参考尺\n左侧英寸 in\n右侧毫米 mm\n0 点在屏幕顶部\n上/下键整体移动",
+    "参考尺操作\n上/下键移动 0 点\n可查看正负刻度\n按确定进入量角器\n\n量角器\n右侧有白色固定边\n标注此边贴紧靶面\n设备与靶面垂直\n黄线以底部为轴\n每次转 0.5 度\n长按连续旋转",
+    "十一、设置\n靶子类型、屏幕方向、\n屏幕亮度、息屏时间、\n记录内十、每组计时、\n倒数十秒语音、语音录靶、\n滚动录入、提示音量、\n保存Wi-Fi密码、Beta、\n使用说明\n上/下选行，确定循环\n长按确定保存返回",
+    "十二、联网\n主页→联网→手机配网\n连接屏幕显示的热点\n默认 Archery-Setup\n打开 http://192.168.4.1\n填写 Wi-Fi 和 API Key\n保存后自动连接\n热点关闭",
+    "十三、常见问题\n测距偏差\n检查靶面、眼屏距离、\n净空和倾角，重新校准\n\n游标不动但数字变化\n远距离 1 像素约 0.8 米\n近距离约 0.1 米\n\n角度不准\n设备侧边贴平靶面\n等垂线稳定\n眼睛正对屏幕"
+};
+
+static void render_manual(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "使用说明");
+    const uint8_t page = flow->manual_page < 13u ? flow->manual_page : 0u;
+    char page_text[16];
+    snprintf(page_text, sizeof(page_text), "%u / 13", (unsigned)(page + 1u));
+    centered_label(scr, page_text, ARCHERY_FONT_BODY, C_MUTED, 34);
+    lv_obj_t *label = make_label(scr, manual_pages[page], ARCHERY_FONT_BODY, C_TEXT);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_width(label, 216);
+    lv_obj_set_pos(label, 12, 58);
+    lv_obj_set_style_text_line_space(label, 2, 0);
 }
 
 static void render_sight_calc(lv_obj_t *scr, const archery_flow_t *flow) {
@@ -1290,7 +1340,8 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
     static const char *row_names[] = {"靶子类型", "屏幕方向", "屏幕亮度",
                                       "息屏时间", "记录内十", "每组计时",
                                       "倒数十秒语音", "语音录靶", "滚动录入",
-                                      "提示音量", "保存Wi-Fi密码", "Beta功能测试"};
+                                      "提示音量", "保存Wi-Fi密码", "Beta功能测试",
+                                      "使用说明"};
     char value[24];
     const uint8_t visible = 6;
     uint8_t offset = flow->settings_row >= visible ? (uint8_t)(flow->settings_row - visible + 1u) : 0u;
@@ -1347,6 +1398,8 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
             snprintf(value, sizeof(value), "%s",
                      flow->settings.wifi_save ? "开" : "关");
         } else if (row == 11) {
+            snprintf(value, sizeof(value), "%s", "进入");
+        } else if (row == 12) {
             snprintf(value, sizeof(value), "%s", "进入");
         }
         lv_obj_t *number = make_label(card, value, ARCHERY_FONT_BODY,
@@ -1687,6 +1740,8 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
         s_ruler_count = 0;
         s_title_visible = false;
         s_clock_label = NULL;
+        s_manual_label = NULL;
+        s_manual_max_scroll = 0;
     } else {
         scr = base_screen();
     }
@@ -1708,6 +1763,7 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_SETTINGS: render_settings(scr, flow); break;
     case ARCHERY_PAGE_AUTO_CHECK: render_auto_check(scr, flow); break;
     case ARCHERY_PAGE_BETA: render_beta(scr, flow); break;
+    case ARCHERY_PAGE_MANUAL: render_manual(scr, flow); break;
     case ARCHERY_PAGE_SIGHT: render_sight(scr, flow); break;
     case ARCHERY_PAGE_TOOLS: render_tools(scr, flow); break;
     case ARCHERY_PAGE_RULER: render_ruler(scr, flow); break;
@@ -1743,6 +1799,18 @@ void archery_ui_update_ruler(int offset, int mode, int angle_tenths) {
     s_ruler_draw_mode = (uint8_t)mode;
     s_ruler_draw_angle = (int16_t)angle_tenths;
     if (s_ruler_draw_obj) lv_obj_invalidate(s_ruler_draw_obj);
+    if (s_ruler_edge_label) {
+        if (mode == 0) lv_obj_add_flag(s_ruler_edge_label, LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_remove_flag(s_ruler_edge_label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+int archery_ui_manual_max_scroll(void) {
+    return s_manual_max_scroll;
+}
+
+void archery_ui_shift_manual(int dx) {
+    if (s_manual_label) lv_obj_set_y(s_manual_label, lv_obj_get_y(s_manual_label) - dx);
 }
 
 void archery_ui_shift_ruler(int dx) {
@@ -1755,6 +1823,9 @@ void archery_ui_shift_ruler(int dx) {
 void archery_ui_clear(void) {
     s_ruler_count = 0;
     s_ruler_draw_obj = NULL;
+    s_ruler_edge_label = NULL;
+    s_manual_label = NULL;
+    s_manual_max_scroll = 0;
     if (s_screen) {
         lv_obj_delete(s_screen);
         s_screen = NULL;

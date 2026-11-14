@@ -11,7 +11,7 @@
 
 // 设置页行数：0 = 靶子类型，1 = 屏幕方向，2 = 屏幕亮度，3 = 息屏时间，
 // 4 = 记录内十，5 = 每组计时，6 = 倒数十秒语音，7 = 语音录靶，8 = 滚动录入，9 = 提示音量，10 = 保存 Wi-Fi 密码。
-#define ARCHERY_SETTINGS_ROWS 12u
+#define ARCHERY_SETTINGS_ROWS 13u
 #define ARCHERY_SETTINGS_ROW_BEEP_VOLUME 9u
 
 #define ARCHERY_SETTINGS_DEFAULT_BRIGHTNESS 20u

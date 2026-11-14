@@ -8,6 +8,23 @@ Release history for the archery scorekeeper application. The repository-wide
 [changelog](../CHANGELOG.md) tracks the AI Passport project itself; this file
 follows the application's firmware versions.
 
+## 1.5.9 — 2026-11-14
+
+### Added
+
+- Settings now includes a 13-page User Manual covering controls, training, voice entry, timers, history, sight tools, rangefinder calibration, tilt, the reference ruler, the protractor, settings, networking, and common questions.
+- Protractor mode now shows a white right-edge guide labelled "此边贴紧靶面，设备与靶面垂直", rotated for landscape use.
+
+### Changed
+
+- The manual uses chapter pages rather than one long scrolling label, so every section is reachable.
+- Protractor instruction text is arranged along the right edge for horizontal use.
+
+### Fixed
+
+- Rangefinder calibration recommendation now states 80 cm full face at 18 m instead of calling it a default.
+- Metronome voice list corrected to click, male, Xiaolin, Xiaozhang, Doubao, and cat.
+
 ## 1.5.8 — 2026-11-14
 
 ### Added
