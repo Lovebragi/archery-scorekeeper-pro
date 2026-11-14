@@ -8,6 +8,8 @@
 // 推导，按键处理在 archery_flow.c，存储/计时在 archery_app.c。
 #include "archery_ui.h"
 
+#include <math.h>
+
 #include "archery_fonts.h"
 #include "archery_layout.h"
 #include "archery_logbuf.h"
@@ -47,8 +49,12 @@ static lv_obj_t *s_timer_title;
 static lv_obj_t *s_timer_clock;
 static lv_obj_t *s_clock_label;
 static bool s_title_visible;
-static lv_obj_t *s_ruler_items[160];
-static uint8_t s_ruler_count;
+static lv_obj_t *s_ruler_items[320];
+static uint16_t s_ruler_count;
+static lv_obj_t *s_ruler_draw_obj;
+static int16_t s_ruler_draw_offset;
+static uint8_t s_ruler_draw_mode;
+static int16_t s_ruler_draw_angle;
 static lv_obj_t *s_timer_hint;
 static const archery_wifi_view_t *s_wifi_view;
 
@@ -293,7 +299,7 @@ static void render_home(lv_obj_t *scr, const archery_flow_t *flow) {
 }
 
 static void ruler_register(lv_obj_t *obj) {
-    if (obj && s_ruler_count < (uint8_t)(sizeof(s_ruler_items) / sizeof(s_ruler_items[0]))) {
+    if (obj && s_ruler_count < (uint16_t)(sizeof(s_ruler_items) / sizeof(s_ruler_items[0]))) {
         s_ruler_items[s_ruler_count++] = obj;
     }
 }
@@ -312,7 +318,7 @@ static void ruler_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color
 
 static void render_tools(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "射箭工具");
-    static const char *names[] = {"瞄具刻度", "刻度估算", "节拍器", "测距", "参考尺"};
+    static const char *names[] = {"瞄具刻度", "刻度估算", "节拍器", "测距", "参考尺/量角器"};
     for (uint8_t row = 0; row < 5; row++) {
         const archery_rect_t rect = {20, (int16_t)(66 + row * 38), 200, 34};
         const bool selected = flow->tools_row == row;
@@ -325,57 +331,95 @@ static void render_tools(lv_obj_t *scr, const archery_flow_t *flow) {
     add_hint(scr, "长按确定 返回主页", 294);
 }
 
+
+static void ruler_fixed_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color) {
+    lv_obj_t *line = lv_obj_create(scr);
+    lv_obj_set_pos(line, x, y);
+    lv_obj_set_size(line, w, h);
+    lv_obj_set_style_bg_color(line, lv_color_hex(color), 0);
+    lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(line, 0, 0);
+    lv_obj_set_style_radius(line, 0, 0);
+    lv_obj_set_style_pad_all(line, 0, 0);
+    lv_obj_remove_flag(line, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+static void ruler_draw_text(lv_layer_t *layer, int x, int y, const char *text, uint32_t color) {
+    lv_draw_label_dsc_t d;
+    lv_draw_label_dsc_init(&d);
+    d.font = ARCHERY_FONT_BODY;
+    d.color = lv_color_hex(color);
+    d.text = text;
+    lv_area_t area = {x, y, x + 60, y + 22};
+    lv_draw_label(layer, &d, &area);
+}
+
+static void ruler_draw_line(lv_layer_t *layer, int x1, int y1, int x2, int y2, uint32_t color, int width) {
+    lv_draw_line_dsc_t d;
+    lv_draw_line_dsc_init(&d);
+    d.color = lv_color_hex(color);
+    d.width = width;
+    d.p1.x = x1; d.p1.y = y1;
+    d.p2.x = x2; d.p2.y = y2;
+    lv_draw_line(layer, &d);
+}
+
+static void ruler_draw_cb(lv_event_t *e) {
+    lv_layer_t *layer = lv_event_get_layer(e);
+    char text[24];
+    if (s_ruler_draw_mode == 0) {
+        const int zero_y = 16 + s_ruler_draw_offset * 8;
+        ruler_draw_line(layer, 5, 0, 5, 320, C_GOLD, 2);
+        ruler_draw_line(layer, 234, 0, 234, 320, C_GOLD, 2);
+        for (int mm = -25; mm <= 60; mm++) {
+            const int y = zero_y + mm * 8;
+            if (y < 0 || y >= 320) continue;
+            const int len = (mm % 10 == 0) ? 16 : (mm % 5 == 0 ? 10 : 6);
+            ruler_draw_line(layer, 234 - len, y, 234, y, C_TEXT, 1);
+            if (mm % 5 == 0) {
+                snprintf(text, sizeof(text), "%d", mm);
+                ruler_draw_text(layer, 234 - len - 32, y - 10, text, C_TEXT);
+            }
+        }
+        for (int tenth = -10; tenth <= 25; tenth++) {
+            const int y = zero_y + (int)(tenth * 20.32f + 0.5f);
+            if (y < 0 || y >= 320) continue;
+            const int len = (tenth % 5 == 0) ? 16 : 6;
+            ruler_draw_line(layer, 5, y, 5 + len, y, C_TEXT, 1);
+            if (tenth % 5 == 0) {
+                const int av = tenth < 0 ? -tenth : tenth;
+                snprintf(text, sizeof(text), "%s%d%s", tenth < 0 ? "-" : "",
+                         av / 10, (av % 10) == 5 ? ".5" : "");
+                ruler_draw_text(layer, 5 + len + 4, y - 10, text, C_TEXT);
+            }
+        }
+        ruler_draw_text(layer, 8, 2, "in", C_GOLD);
+        ruler_draw_text(layer, 205, 2, "mm", C_GOLD);
+        ruler_draw_line(layer, 3, zero_y - 2, 9, zero_y - 2, C_GOLD, 2);
+    } else {
+        const int cx = 120;
+        const int dx = (int)(tanf((float)s_ruler_draw_angle / 10.0f * 3.14159265f / 180.0f) * 320.0f);
+        ruler_draw_line(layer, cx - dx, 0, cx, 320, C_GOLD, 2);
+        ruler_draw_line(layer, cx - 2, 318, cx + 2, 318, C_GOLD, 3);
+        const int at = s_ruler_draw_angle < 0 ? -s_ruler_draw_angle : s_ruler_draw_angle;
+        snprintf(text, sizeof(text), "%s%d.%d°", s_ruler_draw_angle < 0 ? "-" : "", at / 10, at % 10);
+        ruler_draw_text(layer, 8, 4, text, C_GOLD);
+    }
+}
+
 static void render_ruler(lv_obj_t *scr, const archery_flow_t *flow) {
-    (void)flow;
-    // 屏幕有效高度 320 px 对应 40 mm：8 px/mm。
-    s_ruler_count = 0;
-    // 屏幕有效高度 320 px 对应 40 mm，固定 8 px/mm。
-    const int pmm = 8;
-    const int ruler_px = 320;
-    const int vshift = (flow ? flow->ruler_offset : 0) * pmm;
-    const int metric_x = 5;     // 外壳遮挡约 1～2px，内缩到可见区
-    const int imperial_x = 234; // 右侧同样内缩
-    const int axis_top = -15 * pmm + vshift;
-    ruler_rect(scr, metric_x, axis_top, 1, 70 * pmm, C_GOLD);
-    ruler_rect(scr, imperial_x, axis_top, 1, 70 * pmm, C_GOLD);
-    char text[12];
-    // 连续创建 -15～55 mm 的刻度；移动范围 ±15 mm，50 mm 可进入视野。
-    for (int mm = -15; mm <= 55; mm++) {
-        const int y = mm * pmm + vshift;
-        int len = 6;
-        if (mm % 10 == 0) len = 16;
-        else if (mm % 5 == 0) len = 10;
-        ruler_rect(scr, metric_x, y, len, 1, C_TEXT);
-        if (mm >= 0 && mm <= 50 && mm % 10 == 0) {
-            snprintf(text, sizeof(text), "%d", mm);
-            lv_obj_t *label = make_label(scr, text, ARCHERY_FONT_BODY, C_TEXT);
-            ruler_register(label);
-            const int ly = y - 9;
-            lv_obj_set_pos(label, metric_x + len + 4, ly);
-        }
-    }
-    // 英制：1 in = 25.4 mm，0.1 in = 20.32 px；覆盖约 -0.4～2.0 in。
-    for (int tenth = -4; tenth <= 20; tenth++) {
-        const int y = (int)(tenth * 20.32f + 0.5f) + vshift;
-        const int len = (tenth % 5 == 0) ? 16 : 6;
-        ruler_rect(scr, imperial_x - len, y, len, 1, C_TEXT);
-        if (tenth >= 0 && tenth % 5 == 0) {
-            if (tenth == 0) snprintf(text, sizeof(text), "0");
-            else if (tenth == 5) snprintf(text, sizeof(text), "0.5");
-            else if (tenth == 10) snprintf(text, sizeof(text), "1");
-            else if (tenth == 15) snprintf(text, sizeof(text), "1.5");
-            else snprintf(text, sizeof(text), "2");
-            lv_obj_t *label = make_label(scr, text, ARCHERY_FONT_BODY, C_TEXT);
-            ruler_register(label);
-            const int ly = y - 9;
-            lv_obj_set_pos(label, imperial_x - len - 34, ly);
-        }
-    }
-    // mm/in 固定在屏幕顶角，不随刻度平移。
-    lv_obj_t *mm_title = make_label(scr, "mm", ARCHERY_FONT_BODY, C_GOLD);
-    lv_obj_set_pos(mm_title, 52, 2);
-    lv_obj_t *in_title = make_label(scr, "in", ARCHERY_FONT_BODY, C_GOLD);
-    lv_obj_set_pos(in_title, 158, 2);
+    s_ruler_draw_offset = flow->ruler_offset;
+    s_ruler_draw_mode = flow->ruler_mode;
+    s_ruler_draw_angle = flow->ruler_angle_tenths;
+    lv_obj_t *canvas = lv_obj_create(scr);
+    s_ruler_draw_obj = canvas;
+    lv_obj_set_pos(canvas, 0, 0);
+    lv_obj_set_size(canvas, 240, 320);
+    lv_obj_set_style_bg_opa(canvas, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(canvas, 0, 0);
+    lv_obj_set_style_pad_all(canvas, 0, 0);
+    lv_obj_remove_flag(canvas, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_event_cb(canvas, ruler_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
 }
 
 static void render_sight_calc(lv_obj_t *scr, const archery_flow_t *flow) {
@@ -506,13 +550,13 @@ static void render_range_intro(lv_obj_t *scr, const archery_flow_t *flow) {
 
 static void render_range_config(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "测距参数");
-    static const char *target_names[] = {"122全", "80全", "60全", "40全", "40半"};
-    static const char *names[] = {"靶面", "眼到屏幕", "开始测距"};
+    static const char *target_names[] = {"40半", "40全", "80半", "80全", "122全"};
+    static const char *names[] = {"靶面", "眼屏距离", "眼屏距离校准", "靶面倾角", "开始测距"};
     char line[32];
-    for (uint8_t row = 0; row < 3; row++) {
-        const archery_rect_t rect = {20, (int16_t)(96 + row * 54), 200, 40};
+    for (uint8_t row = 0; row < 5; row++) {
+        const archery_rect_t rect = {20, (int16_t)(72 + row * 38), 200, 34};
         const bool selected = flow->range_row == row;
-        const bool editing = selected && flow->range_edit;
+        const bool editing = selected && flow->range_edit && (row == 0u || row == 1u || row == 3u);
         lv_obj_t *card = make_card(scr, rect, selected, false);
         if (editing) {
             lv_obj_set_style_border_width(card, 3, 0);
@@ -522,8 +566,10 @@ static void render_range_config(lv_obj_t *scr, const archery_flow_t *flow) {
                                     selected ? C_GOLD : C_TEXT);
         lv_obj_align(name, LV_ALIGN_LEFT_MID, 10, 0);
         switch (row) {
-        case 0: snprintf(line, sizeof(line), "%s", target_names[flow->range_target]); break;
+        case 0: snprintf(line, sizeof(line), "%s", target_names[flow->range_target < 5u ? flow->range_target : 0u]); break;
         case 1: snprintf(line, sizeof(line), "%u cm", (unsigned)flow->range_eye_cm); break;
+        case 2: snprintf(line, sizeof(line), "%s", flow->range_cal_k ? "已校准" : "未校准"); break;
+        case 3: snprintf(line, sizeof(line), "%u°", (unsigned)flow->range_tilt_deg); break;
         default: snprintf(line, sizeof(line), "%s", "进入"); break;
         }
         lv_obj_t *val = make_label(card, line,
@@ -531,40 +577,105 @@ static void render_range_config(lv_obj_t *scr, const archery_flow_t *flow) {
                                    selected ? C_GOLD : C_TEXT);
         lv_obj_align(val, LV_ALIGN_RIGHT_MID, -10, 0);
     }
-    add_hint(scr, "上/下 选择 · 确定 编辑", 264);
+    add_hint(scr, "上/下 选择 · 确定 编辑", 270);
     add_hint(scr, "长按确定 返回工具", 292);
+}
+
+static void render_range_cal(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "眼屏距离校准");
+    const int bottom = 286;
+    const int axis_x = 232;
+    int h = flow->range_cal_h;
+    if (h < 10) h = 10;
+    if (h > 270) h = 270;
+    static const uint16_t cal_full_mm[] = {200, 400, 400, 800, 1220};
+    static const char *cal_target_names[] = {"40半", "40全", "80半", "80全", "122全"};
+    static const uint16_t cal_cos[16] = {1000,1000,999,999,998,996,995,993,
+                                         990,988,985,982,978,974,970,966};
+    const uint8_t cal_target = flow->range_target < 5u ? flow->range_target : 0u;
+    const uint8_t cal_tilt = flow->range_tilt_deg > 15u ? 15u : flow->range_tilt_deg;
+    const uint16_t size_mm = (uint16_t)((uint32_t)cal_full_mm[cal_target] * cal_cos[cal_tilt] / 1000u);
+    const uint32_t d_mm = (uint32_t)flow->range_cal_m * 1000u;
+    const uint32_t a_cm = d_mm * h / (size_mm * 8u * 10u);
+    char line[48];
+
+    // 说明文字全部放左侧，右侧留给游标。
+    snprintf(line, sizeof(line), "已知距离 %u m", (unsigned)flow->range_cal_m);
+    lv_obj_t *v = make_label(scr, line, ARCHERY_FONT_TITLE, C_GOLD);
+    lv_obj_set_pos(v, 8, 34);
+    snprintf(line, sizeof(line), "靶面 %s", cal_target_names[cal_target]);
+    v = make_label(scr, line, ARCHERY_FONT_BODY, C_TEXT);
+    lv_obj_set_pos(v, 8, 60);
+    v = make_label(scr, "建议 80 全靶", ARCHERY_FONT_BODY, C_MUTED);
+    lv_obj_set_pos(v, 8, 86);
+    v = make_label(scr, "18 m 处校准", ARCHERY_FONT_BODY, C_MUTED);
+    lv_obj_set_pos(v, 8, 106);
+    v = make_label(scr, "游标对靶上沿", ARCHERY_FONT_BODY, C_MUTED);
+    lv_obj_set_pos(v, 8, 126);
+
+    rangefinder_rect(scr, 150, bottom, axis_x - 150 + 1, 2, C_GOLD);
+    rangefinder_rect(scr, axis_x, 0, 1, bottom + 1, C_GOLD);
+    rangefinder_rect(scr, 150, bottom - h - 2, axis_x - 150 + 1, 2, C_GOLD);
+    snprintf(line, sizeof(line), "眼距 %u cm", (unsigned)a_cm);
+    v = make_label(scr, line, ARCHERY_FONT_BODY, C_GOLD);
+    int ly = bottom - h - 20;
+    if (ly < 22) ly = 22;
+    lv_obj_set_pos(v, 150, ly);
+
+    static const char *names[] = {"距离", "眼距", "保存"};
+    for (uint8_t row = 0; row < 3; row++) {
+        const archery_rect_t rect = {8, (int16_t)(180 + row * 34), 112, 30};
+        const bool selected = flow->range_cal_row == row;
+        const bool editing = selected && flow->range_cal_edit && row < 2u;
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        if (editing) {
+            lv_obj_set_style_border_width(card, 3, 0);
+            lv_obj_set_style_border_color(card, lv_color_hex(C_GOLD), 0);
+        }
+        lv_obj_t *name = make_label(card, names[row], ARCHERY_FONT_BODY,
+                                    selected ? C_GOLD : C_TEXT);
+        lv_obj_align(name, LV_ALIGN_LEFT_MID, 8, 0);
+        if (row == 0) snprintf(line, sizeof(line), "%u m", (unsigned)flow->range_cal_m);
+        else if (row == 1) snprintf(line, sizeof(line), "%u cm", (unsigned)a_cm);
+        else snprintf(line, sizeof(line), "%s", "确定");
+        lv_obj_t *val = make_label(card, line,
+                                   editing ? ARCHERY_FONT_TITLE : ARCHERY_FONT_BODY,
+                                   selected ? C_GOLD : C_TEXT);
+        lv_obj_align(val, LV_ALIGN_RIGHT_MID, -8, 0);
+    }
+    add_hint(scr, "上/下 选择/调值 · 长按返回", 292);
 }
 
 static void render_range_view(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "测距刻度");
-    static const uint16_t full_mm[] = {1220, 800, 600, 400, 400};
-    static const char *target_names[] = {"122全", "80全", "60全", "40全", "40半"};
+    static const uint16_t full_mm[] = {200, 400, 400, 800, 1220};
+    static const char *target_names[] = {"40半", "40全", "80半", "80全", "122全"};
+    static const uint16_t cos_permille[16] = {1000,1000,999,999,998,996,995,993,
+                                              990,988,985,982,978,974,970,966};
     const uint8_t target = flow->range_target < 5u ? flow->range_target : 0u;
-    const uint16_t size_mm = full_mm[target];
+    const uint8_t tilt = flow->range_tilt_deg > 15u ? 15u : flow->range_tilt_deg;
+    const uint16_t size_mm = (uint16_t)((uint32_t)full_mm[target] * cos_permille[tilt] / 1000u);
     const int bottom = 286;
     const int axis_x = 232;
-    const uint32_t distance = flow->range_distance_m ? flow->range_distance_m : 30u;
-    // 0 线对靶面下沿，游标卡上沿：按完整靶面高度计算。
-    const int height = (int)((uint32_t)flow->range_eye_cm * 10u * size_mm * 8u /
-                             (distance * 1000u));
-    int cursor = bottom - height;
-    if (cursor < 12) cursor = 12;
+    const uint32_t k = flow->range_cal_k ? flow->range_cal_k :
+                       (uint32_t)flow->range_eye_cm * 10u * 8u;
+    int gap = flow->range_cursor_h;
+    if (gap < 10) gap = 10;
+    if (gap > 270) gap = 270;
+    const uint32_t distance_mm = (uint32_t)((uint64_t)k * size_mm / (uint32_t)gap);
+    const uint32_t distance_tenths = (distance_mm + 50u) / 100u;
+    const int cursor = bottom - gap - 2;
 
     char line[64];
-    snprintf(line, sizeof(line), "%u m  %s", (unsigned)distance,
-             target_names[target]);
+    snprintf(line, sizeof(line), "%u.%u m  %s", (unsigned)(distance_tenths / 10u),
+             (unsigned)(distance_tenths % 10u), target_names[target]);
     centered_label(scr, line, ARCHERY_FONT_TITLE, C_GOLD, 34);
-
-    // 0 线在底部，距离刻度向上增长。
-    rangefinder_rect(scr, 140, bottom, axis_x - 140 + 1, 1, C_GOLD);
+    rangefinder_rect(scr, 140, bottom, axis_x - 140 + 1, 2, C_GOLD);
     rangefinder_rect(scr, axis_x, 0, 1, bottom + 1, C_GOLD);
     lv_obj_t *zero = make_label(scr, "0", ARCHERY_FONT_BODY, C_MUTED);
     lv_obj_set_pos(zero, axis_x - 26, bottom - 18);
-
-    // 10 m 参考刻度。
     for (int d = 20; d <= 70; d += 10) {
-        const int h = (int)((uint32_t)flow->range_eye_cm * 10u * size_mm * 8u /
-                            ((uint32_t)d * 1000u));
+        const int h = (int)((uint64_t)k * size_mm / ((uint32_t)d * 1000u));
         const int y = bottom - h;
         if (y < 10 || y > bottom - 4) continue;
         rangefinder_rect(scr, axis_x - 8, y, 8, 1, C_MUTED);
@@ -572,17 +683,15 @@ static void render_range_view(lv_obj_t *scr, const archery_flow_t *flow) {
         lv_obj_t *label = make_label(scr, line, ARCHERY_FONT_BODY, C_MUTED);
         lv_obj_set_pos(label, axis_x - 40, y - 9);
     }
-
-    // 游标：对准靶子上边缘。
     rangefinder_rect(scr, 140, cursor, axis_x - 140 + 1, 2, C_GOLD);
-    snprintf(line, sizeof(line), "%u m", (unsigned)distance);
+    snprintf(line, sizeof(line), "%u.%u m", (unsigned)(distance_tenths / 10u),
+             (unsigned)(distance_tenths % 10u));
     lv_obj_t *value = make_label(scr, line, ARCHERY_FONT_BODY, C_GOLD);
     lv_obj_set_pos(value, axis_x - 70, cursor - 20);
-    if (height > bottom - 12) {
-        centered_label(scr, "靶面超出屏幕，请加大距离",
-                       ARCHERY_FONT_BODY, C_MUTED, 60);
+    if (gap > bottom - 12) {
+        centered_label(scr, "靶面超出屏幕，请加大距离", ARCHERY_FONT_BODY, C_MUTED, 60);
     }
-    add_hint(scr, "0线对下沿 · 游标卡上沿", 290);
+    add_hint(scr, flow->range_cal_k ? "已校准 · 0线对下沿" : "0线对下沿 · 游标卡上沿", 290);
 }
 
 static void render_sight(lv_obj_t *scr, const archery_flow_t *flow) {
@@ -1571,11 +1680,19 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     if (!flow || !history) return;
     // 先把新页面挂上去再删旧页面：直接删除当前活动屏幕会让 LVGL 打
     // "the active screen was deleted" 警告，并在一帧内没有活动屏幕。
-    lv_obj_t *previous = s_screen;
+    lv_obj_t *scr = s_screen;
+    if (scr) {
+        // 复用同一个 screen：先清空旧子对象，避免新旧两套页面同时占用 LVGL 堆。
+        lv_obj_clean(scr);
+        s_ruler_count = 0;
+        s_title_visible = false;
+        s_clock_label = NULL;
+    } else {
+        scr = base_screen();
+    }
     s_timer_title = NULL;
     s_timer_clock = NULL;
     s_timer_hint = NULL;
-    lv_obj_t *scr = base_screen();
     s_screen = scr;
 
     switch (flow->page) {
@@ -1599,6 +1716,7 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_RANGE_INTRO: render_range_intro(scr, flow); break;
     case ARCHERY_PAGE_RANGE_CONFIG: render_range_config(scr, flow); break;
     case ARCHERY_PAGE_RANGE_VIEW: render_range_view(scr, flow); break;
+    case ARCHERY_PAGE_RANGE_CAL: render_range_cal(scr, flow); break;
     case ARCHERY_PAGE_CLOCK: render_clock(scr, flow); break;
     case ARCHERY_PAGE_WIFI: render_wifi(scr, flow); break;
     case ARCHERY_PAGE_WIFI_PASSWORD: render_wifi_password(scr, flow); break;
@@ -1618,11 +1736,17 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
         s_clock_label = NULL;
     }
     lv_screen_load(scr);
-    if (previous) lv_obj_delete(previous);
+}
+
+void archery_ui_update_ruler(int offset, int mode, int angle_tenths) {
+    s_ruler_draw_offset = (int16_t)offset;
+    s_ruler_draw_mode = (uint8_t)mode;
+    s_ruler_draw_angle = (int16_t)angle_tenths;
+    if (s_ruler_draw_obj) lv_obj_invalidate(s_ruler_draw_obj);
 }
 
 void archery_ui_shift_ruler(int dx) {
-    for (uint8_t i = 0; i < s_ruler_count; i++) {
+    for (uint16_t i = 0; i < s_ruler_count; i++) {
         lv_obj_t *obj = s_ruler_items[i];
         if (obj) lv_obj_set_y(obj, lv_obj_get_y(obj) + dx);
     }
@@ -1630,6 +1754,7 @@ void archery_ui_shift_ruler(int dx) {
 
 void archery_ui_clear(void) {
     s_ruler_count = 0;
+    s_ruler_draw_obj = NULL;
     if (s_screen) {
         lv_obj_delete(s_screen);
         s_screen = NULL;

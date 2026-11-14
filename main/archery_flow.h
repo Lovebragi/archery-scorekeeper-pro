@@ -38,6 +38,7 @@ typedef enum {
     ARCHERY_PAGE_RANGE_INTRO,
     ARCHERY_PAGE_RANGE_CONFIG,
     ARCHERY_PAGE_RANGE_VIEW,
+    ARCHERY_PAGE_RANGE_CAL,
 } archery_page_t;
 
 // 主页入口数：开始训练 / 历史记录 / 设置 / 联网。
@@ -147,6 +148,9 @@ typedef struct {
     uint8_t sight_editing;
     uint8_t sight_edit_field;  // 0 无, 1 刻度, 2 距离
     int16_t ruler_offset;
+    uint8_t ruler_unit;
+    uint8_t ruler_mode;
+    int16_t ruler_angle_tenths;
     uint16_t calc_distance;
     uint8_t calc_mode;
     uint8_t metro_row;
@@ -166,7 +170,13 @@ typedef struct {
     uint8_t range_target;
     uint8_t range_mode;
     uint8_t range_eye_cm;
-    uint8_t range_distance_m;
+    uint16_t range_cursor_h;
+    uint8_t range_tilt_deg;
+    uint8_t range_cal_m;
+    uint8_t range_cal_row;
+    uint8_t range_cal_edit;
+    uint16_t range_cal_h;
+    uint32_t range_cal_k;
     archery_sight_t sight;
     uint8_t wifi_secure_mask;  // 扫描结果里哪些是加密网络（bit0 = 第 1 个）
     uint8_t wifi_target;    // 正在输入密码的网络下标

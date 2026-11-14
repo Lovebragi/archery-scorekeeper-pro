@@ -8,6 +8,27 @@ Release history for the archery scorekeeper application. The repository-wide
 [changelog](../CHANGELOG.md) tracks the AI Passport project itself; this file
 follows the application's firmware versions.
 
+## 1.5.8 — 2026-11-14
+
+### Added
+
+- Rangefinder target presets corrected to 40 half (20 cm), 40 full (40 cm), 80 half (40 cm, rings 6-10), 80 full (80 cm) and 122 full (122 cm).
+- Rangefinder target tilt 0-15 degrees, with projected-height correction.
+- Custom eye-to-screen distance calibration using a known distance and cursor alignment.
+- Reference ruler page now combines an inch scale on the left and a millimetre scale on the right, plus a dedicated rotating-line protractor mode.
+
+### Changed
+
+- Rangefinder cursor moves in 1 px steps, measures the clear gap between the yellow lines and reports distance to 0.1 m.
+- Calibration page layout: instructions on the left, cursor and live eye distance on the right.
+- Reference ruler and protractor are drawn by a single custom-drawn object to keep long-press movement smooth and reduce LVGL memory use.
+
+### Fixed
+
+- Target cycling direction now follows size order.
+- Rangefinder calibration no longer loses the stored eye distance when the target preset changes.
+- LVGL page reuse and reduced object counts avoid reboots when opening the ruler page or toggling its modes.
+
 ## 1.4.6 — 2026-10-30
 
 ### Added

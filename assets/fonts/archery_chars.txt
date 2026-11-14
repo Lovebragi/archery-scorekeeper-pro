@@ -1,6 +1,7 @@
 # Archery scorekeeper UI glyph inventory (non-ASCII).
 # Printable ASCII U+0020..U+007E is always included implicitly.
 # Regenerate with tools/gen_lvgl_text_font.py --scan main/archery_*.c; tests/test_archery_fonts.py fails when UI text needs a missing glyph.
+U+00B0  # °
 U+00B7  # ·
 U+00BB  # »
 U+00BF  # ¿
@@ -52,6 +53,7 @@ U+4FEE  # 修
 U+5012  # 倒
 U+5019  # 候
 U+503C  # 值
+U+503E  # 倾
 U+505C  # 停
 U+50A8  # 储
 U+5148  # 先
@@ -133,6 +135,7 @@ U+57FA  # 基
 U+586B  # 填
 U+589E  # 增
 U+58F0  # 声
+U+5904  # 处
 U+5907  # 备
 U+590D  # 复
 U+5916  # 外
@@ -195,6 +198,7 @@ U+624B  # 手
 U+6253  # 打
 U+6267  # 执
 U+626B  # 扫
+U+628A  # 把
 U+629B  # 抛
 U+62A5  # 报
 U+62CD  # 拍
@@ -312,6 +316,7 @@ U+7B2C  # 第
 U+7B5B  # 筛
 U+7B97  # 算
 U+7BAD  # 箭
+U+7C73  # 米
 U+7C7B  # 类
 U+7CFB  # 系
 U+7D2F  # 累
@@ -346,6 +351,7 @@ U+884C  # 行
 U+8868  # 表
 U+8981  # 要
 U+89C8  # 览
+U+89D2  # 角
 U+8BA1  # 计
 U+8BA4  # 认
 U+8BAD  # 训

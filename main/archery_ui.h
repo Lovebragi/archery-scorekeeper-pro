@@ -14,6 +14,7 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
 void archery_ui_update_clock(uint32_t now, bool set);
 // 参考尺纵向平移，dy 为像素（调用方持有 LVGL 锁）。
 void archery_ui_shift_ruler(int dy);
+void archery_ui_update_ruler(int offset, int mode, int angle_tenths);
 
 // 联网页的只读视图（应用在刷新前设置；为空时显示"模块未初始化"）。
 void archery_ui_set_wifi_view(const archery_wifi_view_t *view);

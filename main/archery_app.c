@@ -650,6 +650,8 @@ static void auto_check_start(void) {
 static void handle_key(archery_key_t key) {
     const bool was_ruler = s_flow.page == ARCHERY_PAGE_RULER;
     const int16_t ruler_before = s_flow.ruler_offset;
+    const uint8_t ruler_mode_before = s_flow.ruler_mode;
+    const int16_t ruler_angle_before = s_flow.ruler_angle_tenths;
     const bool was_calc = s_flow.page == ARCHERY_PAGE_SIGHT_CALC;
     const uint16_t calc_distance_before = s_flow.calc_distance;
     const uint8_t calc_mode_before = s_flow.calc_mode;
@@ -816,11 +818,15 @@ static void handle_key(archery_key_t key) {
         archery_flow_clear_runtime_entries(&s_flow);
     }
     if (was_ruler && s_flow.page == ARCHERY_PAGE_RULER) {
-        if (ruler_moved && bsp_lvgl_lock(100)) {
-            archery_ui_shift_ruler((int)(s_flow.ruler_offset - ruler_before) * 8);
-            bsp_lvgl_unlock();
+        if (s_flow.ruler_mode != ruler_mode_before ||
+            s_flow.ruler_angle_tenths != ruler_angle_before ||
+            ruler_moved) {
+            if (bsp_lvgl_lock(100)) {
+                archery_ui_update_ruler(s_flow.ruler_offset, s_flow.ruler_mode,
+                                        s_flow.ruler_angle_tenths);
+                bsp_lvgl_unlock();
+            }
         }
-        // 到达边界时 offset 不再变化，绝不能重绘整页，否则连发会压垮 LVGL。
     } else if (was_calc && s_flow.page == ARCHERY_PAGE_SIGHT_CALC) {
         if (calc_changed) redraw();
         // 距离到边界后不再重绘，避免长按连发堆积。
@@ -851,6 +857,7 @@ static void repeat_timer_cb(void *arg) {
     const bool calc_repeat = s_flow.page == ARCHERY_PAGE_SIGHT_CALC;
     const bool metro_repeat = s_flow.page == ARCHERY_PAGE_METRONOME && s_flow.metro_edit;
     const bool range_repeat = (s_flow.page == ARCHERY_PAGE_RANGE_CONFIG && s_flow.range_edit) ||
+                               (s_flow.page == ARCHERY_PAGE_RANGE_CAL && s_flow.range_cal_edit) ||
                                s_flow.page == ARCHERY_PAGE_RANGE_VIEW;
     if (!s_repeat_active || (s_flow.page != ARCHERY_PAGE_HISTORY &&
                              s_flow.page != ARCHERY_PAGE_DIAG_LOG && !entry_repeat && !settings_repeat &&
@@ -991,6 +998,22 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
             const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
             (void)xQueueSend(s_queue, &step, 0);
             (void)esp_timer_start_periodic(s_repeat_timer, 500000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_RANGE_CAL && s_flow.range_cal_edit && s_repeat_timer) {
+            s_repeat_key = pressed;
+            s_repeat_active = true;
+            s_repeat_used = true;
+            s_repeat_slow = false;
+            s_repeat_period_us = 100000;
+            (void)esp_timer_stop(s_repeat_timer);
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
+            (void)esp_timer_start_once(s_repeat_timer, 400000);
+        } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
+                   s_flow.page == ARCHERY_PAGE_RANGE_CAL) {
+            s_repeat_used = true;
+            const app_message_t step = {.type = APP_MSG_KEY, .key = pressed};
+            (void)xQueueSend(s_queue, &step, 0);
         } else if ((pressed == ARCHERY_KEY_UP || pressed == ARCHERY_KEY_DOWN) &&
                    s_flow.page == ARCHERY_PAGE_RANGE_VIEW && s_repeat_timer) {
             s_repeat_key = pressed;

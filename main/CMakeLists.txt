@@ -45,6 +45,10 @@ idf_component_register(
 
 # 应用专用的中文子集字体（Noto Sans SC，OFL-1.1）。生成命令与字符清单见
 # assets/README.md；重新生成后无需改动这里。
+if(ARCHERY_MUSIC_EMBED_FILES)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE ARCHERY_MUSIC_EMBEDDED=1)
+endif()
+
 target_sources(${COMPONENT_LIB} PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/../assets/fonts/archery_font_16.c"
     "${CMAKE_CURRENT_LIST_DIR}/../assets/fonts/archery_font_20.c"

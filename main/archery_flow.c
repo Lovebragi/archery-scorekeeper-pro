@@ -38,10 +38,16 @@ void archery_flow_init(archery_flow_t *flow) {
     flow->metro_countin = 0;
     flow->metro_stop_min = 0;
     flow->metro_volume = 100;
-    flow->range_target = 0;
+    flow->range_target = 0;  // 默认 40 半，向上递增
     flow->range_mode = 0;
     flow->range_eye_cm = 60;
-    flow->range_distance_m = 30;
+    flow->range_cursor_h = 0;
+    flow->range_tilt_deg = 0;
+    flow->range_cal_m = 18;
+    flow->range_cal_row = 0;
+    flow->range_cal_edit = 0;
+    flow->range_cal_h = 0;
+    flow->range_cal_k = 0;
     flow->page = ARCHERY_PAGE_HOME;
     flow->abort_return = ARCHERY_PAGE_ENTRY;
     flow->setup_groups = ARCHERY_DEFAULT_GROUPS;
@@ -542,7 +548,10 @@ static archery_act_t handle_tools(archery_flow_t *flow, archery_key_t key) {
             flow->range_edit = 0;
             flow->page = ARCHERY_PAGE_RANGE_INTRO;
         } else {
-            flow->ruler_offset = 2;  // 初始下移 2 mm，让 0 标签可见
+            flow->ruler_offset = 0;
+            flow->ruler_unit = 0;
+            flow->ruler_mode = 0;
+            flow->ruler_angle_tenths = 0;
             flow->page = ARCHERY_PAGE_RULER;
         }
         break;
@@ -555,12 +564,24 @@ static archery_act_t handle_tools(archery_flow_t *flow, archery_key_t key) {
 
 static archery_act_t handle_ruler(archery_flow_t *flow, archery_key_t key) {
     if (key == ARCHERY_KEY_UP) {
-        flow->ruler_offset--;
-        if (flow->ruler_offset < -15) flow->ruler_offset = -15;
+        if (flow->ruler_mode == 0) {
+            flow->ruler_offset--;
+            if (flow->ruler_offset < -19) flow->ruler_offset = -19;
+        } else {
+            flow->ruler_angle_tenths += 5;
+            if (flow->ruler_angle_tenths > 150) flow->ruler_angle_tenths = 150;
+        }
     } else if (key == ARCHERY_KEY_DOWN) {
-        flow->ruler_offset++;
-        if (flow->ruler_offset > 15) flow->ruler_offset = 15;
-    } else if (key == ARCHERY_KEY_OK || key == ARCHERY_KEY_OK_LONG) {
+        if (flow->ruler_mode == 0) {
+            flow->ruler_offset++;
+            if (flow->ruler_offset > 19) flow->ruler_offset = 19;
+        } else {
+            flow->ruler_angle_tenths -= 5;
+            if (flow->ruler_angle_tenths < -150) flow->ruler_angle_tenths = -150;
+        }
+    } else if (key == ARCHERY_KEY_OK) {
+        flow->ruler_mode = flow->ruler_mode ? 0u : 1u;
+    } else if (key == ARCHERY_KEY_OK_LONG) {
         flow->page = ARCHERY_PAGE_TOOLS;
     }
     return ARCHERY_ACT_NONE;
@@ -670,6 +691,30 @@ static archery_act_t handle_range_intro(archery_flow_t *flow, archery_key_t key)
     return ARCHERY_ACT_NONE;
 }
 
+static uint16_t range_target_mm(uint8_t target) {
+    static const uint16_t sizes[] = {200, 400, 400, 800, 1220};  // 40半/40全/80半/80全/122全
+    return sizes[target < 5u ? target : 0u];
+}
+
+static uint16_t range_effective_mm(const archery_flow_t *flow) {
+    static const uint16_t cos_permille[16] = {1000,1000,999,999,998,996,995,993,
+                                              990,988,985,982,978,974,970,966};
+    const uint8_t deg = flow->range_tilt_deg > 15u ? 15u : flow->range_tilt_deg;
+    return (uint16_t)((uint32_t)range_target_mm(flow->range_target) *
+                      cos_permille[deg] / 1000u);
+}
+
+static uint16_t range_cursor_height(const archery_flow_t *flow, uint16_t distance_m) {
+    const uint32_t d_mm = (uint32_t)distance_m * 1000u;
+    const uint32_t size = range_effective_mm(flow);
+    if (d_mm == 0) return 0;
+    const uint32_t k = flow->range_cal_k ? flow->range_cal_k :
+                       (uint32_t)flow->range_eye_cm * 10u * 8u;
+    const uint32_t total = (uint32_t)((uint64_t)k * size / d_mm);
+    // 两条 2px 黄线之间的净空；不足时留最小净空。
+    return (uint16_t)(total > 4u ? total - 4u : 1u);
+}
+
 static archery_act_t handle_range_config(archery_flow_t *flow, archery_key_t key) {
     switch (key) {
     case ARCHERY_KEY_UP:
@@ -677,22 +722,29 @@ static archery_act_t handle_range_config(archery_flow_t *flow, archery_key_t key
         const int delta = key == ARCHERY_KEY_UP ? 1 : -1;
         if (!flow->range_edit) {
             int row = (int)flow->range_row + (key == ARCHERY_KEY_UP ? -1 : 1);
-            if (row < 0) row = 2;
-            if (row > 2) row = 0;
+            if (row < 0) row = 4;
+            if (row > 4) row = 0;
             flow->range_row = (uint8_t)row;
             break;
         }
         switch (flow->range_row) {
         case 0:
-            // 上键增大靶面，下键缩小；0=122, 1=80, 2=60, 3=40全, 4=40半
-            flow->range_target = (uint8_t)((flow->range_target + (delta > 0 ? 4 : 1)) % 5u);
+            flow->range_target = (uint8_t)((flow->range_target + (delta > 0 ? 1 : 4)) % 5u);
             flow->range_mode = 0;
             break;
         case 1: {
             int v = (int)flow->range_eye_cm + delta;
             if (v < 30) v = 30;
             if (v > 90) v = 90;
+            if (v != flow->range_eye_cm) flow->range_cal_k = 0;  // 眼距变了，旧标定失效
             flow->range_eye_cm = (uint8_t)v;
+            break;
+        }
+        case 3: {
+            int v = (int)flow->range_tilt_deg + delta;
+            if (v < 0) v = 0;
+            if (v > 15) v = 15;
+            flow->range_tilt_deg = (uint8_t)v;
             break;
         }
         default: break;
@@ -701,7 +753,20 @@ static archery_act_t handle_range_config(archery_flow_t *flow, archery_key_t key
     }
     case ARCHERY_KEY_OK:
         if (flow->range_row == 2) {
+            flow->range_cal_row = 0;
+            flow->range_cal_edit = 0;
+            flow->range_cal_h = range_cursor_height(flow, flow->range_cal_m);
+            flow->range_cal_h = 140;  // 默认半屏，方便上下移动
+            if (flow->range_cal_h < 10) flow->range_cal_h = 10;
+            if (flow->range_cal_h > 270) flow->range_cal_h = 270;
+            flow->page = ARCHERY_PAGE_RANGE_CAL;
+        } else if (flow->range_row == 4) {
             flow->range_edit = 0;
+            if (flow->range_cursor_h == 0) {
+                flow->range_cursor_h = range_cursor_height(flow, 30);
+                if (flow->range_cursor_h < 10) flow->range_cursor_h = 10;
+                if (flow->range_cursor_h > 270) flow->range_cursor_h = 270;
+            }
             flow->page = ARCHERY_PAGE_RANGE_VIEW;
         } else {
             flow->range_edit = flow->range_edit ? 0u : 1u;
@@ -715,12 +780,65 @@ static archery_act_t handle_range_config(archery_flow_t *flow, archery_key_t key
     return ARCHERY_ACT_NONE;
 }
 
+static archery_act_t handle_range_cal(archery_flow_t *flow, archery_key_t key) {
+    switch (key) {
+    case ARCHERY_KEY_UP:
+    case ARCHERY_KEY_DOWN: {
+        const int delta = key == ARCHERY_KEY_UP ? 1 : -1;
+        if (!flow->range_cal_edit) {
+            int row = (int)flow->range_cal_row + (key == ARCHERY_KEY_UP ? -1 : 1);
+            if (row < 0) row = 2;
+            if (row > 2) row = 0;
+            flow->range_cal_row = (uint8_t)row;
+            break;
+        }
+        if (flow->range_cal_row == 0) {
+            int v = (int)flow->range_cal_m + delta;
+            if (v < 5) v = 5;
+            if (v > 100) v = 100;
+            flow->range_cal_m = (uint8_t)v;
+        } else {
+            int v = (int)flow->range_cal_h + delta;
+            if (v < 10) v = 10;
+            if (v > 270) v = 270;
+            flow->range_cal_h = (uint16_t)v;
+        }
+        break;
+    }
+    case ARCHERY_KEY_OK:
+        if (flow->range_cal_row == 2) {
+            const uint32_t d_mm = (uint32_t)flow->range_cal_m * 1000u;
+            const uint32_t size = range_effective_mm(flow);
+            if (size > 0 && flow->range_cal_h >= 10) {
+                const uint32_t a_cm = (uint32_t)((uint64_t)d_mm * flow->range_cal_h /
+                                                 ((uint64_t)size * 8u * 10u));
+                flow->range_cal_k = (uint32_t)((uint64_t)d_mm * flow->range_cal_h / size);
+                if (a_cm < 30u) flow->range_eye_cm = 30;
+                else if (a_cm > 90u) flow->range_eye_cm = 90;
+                else flow->range_eye_cm = (uint8_t)a_cm;
+            }
+            flow->range_cal_edit = 0;
+            flow->page = ARCHERY_PAGE_RANGE_CONFIG;
+            flow->range_row = 2;
+        } else {
+            flow->range_cal_edit = flow->range_cal_edit ? 0u : 1u;
+        }
+        break;
+    case ARCHERY_KEY_OK_LONG:
+        flow->range_cal_edit = 0;
+        flow->page = ARCHERY_PAGE_RANGE_CONFIG;
+        flow->range_row = 3;
+        break;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
 static archery_act_t handle_range_view(archery_flow_t *flow, archery_key_t key) {
     if (key == ARCHERY_KEY_UP) {
-        // 上键让游标向上：距离减小，靶面在屏幕上变大。
-        if (flow->range_distance_m > 8) flow->range_distance_m--;
+        // 上键让游标上移 1 px，距离变小。
+        if (flow->range_cursor_h < 270) flow->range_cursor_h++;
     } else if (key == ARCHERY_KEY_DOWN) {
-        if (flow->range_distance_m < 70) flow->range_distance_m++;
+        if (flow->range_cursor_h > 10) flow->range_cursor_h--;
     } else if (key == ARCHERY_KEY_OK) {
         flow->page = ARCHERY_PAGE_RANGE_CONFIG;
     } else if (key == ARCHERY_KEY_OK_LONG) {
@@ -1153,6 +1271,7 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_RANGE_INTRO: return handle_range_intro(flow, key);
     case ARCHERY_PAGE_RANGE_CONFIG: return handle_range_config(flow, key);
     case ARCHERY_PAGE_RANGE_VIEW: return handle_range_view(flow, key);
+    case ARCHERY_PAGE_RANGE_CAL: return handle_range_cal(flow, key);
     }
     return ARCHERY_ACT_NONE;
 }

@@ -68,7 +68,9 @@ lv_display_t *bsp_lvgl_init(void) {
             return NULL;
         }
         const lvgl_port_cfg_t pc = ESP_LVGL_PORT_INIT_CONFIG();
-        if (lvgl_port_init(&pc) != ESP_OK) {
+    lvgl_port_cfg_t cfg = pc;
+    cfg.task_stack = 12288;
+        if (lvgl_port_init(&cfg) != ESP_OK) {
             s_port_init_failed = true;
             ESP_LOGE(TAG, "lvgl_port_init 失败，需重启后重试");
             return NULL;
