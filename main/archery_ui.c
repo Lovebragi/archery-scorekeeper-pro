@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include "archery_fonts.h"
+#include "archery_power.h"
 #include "archery_layout.h"
 #include "archery_logbuf.h"
 #include "archery_name.h"
@@ -450,7 +451,7 @@ static const char *const manual_pages[] = {
     "五、每组计时\n设置→每组计时\n关、20、30、40 秒每支\n开始后先准备，再倒计时\n最后十秒有语音\n\n六、历史记录\n保存最近 300 次训练\n可按全部、今天、最近七天筛选\n手机配网页可导出 CSV",
     "七、射箭工具\n主页→射箭工具\n包含瞄具刻度、刻度估算、\n节拍器、测距、参考尺\n\n瞄具刻度：记录 18/30/50/70 米\n和两个自定义距离\n蓝框有效，红框数据不足\n\n刻度估算：线性或三点插值\n结果仅供参考",
     "节拍器\n可设置 BPM、重音、预备拍、\n自动停止和预设\n提示音：click、男声、小林、\n小章、豆包、猫叫\n\n八、测距参数\n靶面、眼屏距离、\n眼屏距离校准、靶面倾角、\n开始测距",
-    "测距靶面\n40半 20cm  40全 40cm\n80半 40cm（6～10环）\n80全 80cm  122全 122cm\n\n刻度页\n下面黄线对靶下沿\n上面黄线卡靶上沿\n上/下键每次移动游标 1 像素\n长按连续移动",
+    "测距靶面\n40半 20cm  40全 40cm\n80半 40cm（6～10环）\n80六环 48cm\n80全 80cm  122全 122cm\n\n刻度页\n下面黄线对靶下沿\n上面黄线卡靶上沿\n上/下键每次移动游标 1 像素\n长按连续移动",
     "测距计算\n距离按两条黄线之间的净空\n不包含线宽\n显示 0.1 米\n\n眼屏距离校准\n建议使用 80 全靶\n在 18 米距离校准\n调整游标对准靶子上沿\n保存后反算眼屏距离\n换靶面不会清除校准",
     "九、靶面倾角\n设置范围 0～15 度\n0 度：靶面垂直地面\n15 度：上沿向上倾斜\n设备会按投影高度修正\n\n十、参考尺\n左侧英寸 in\n右侧毫米 mm\n0 点在屏幕顶部\n上/下键整体移动",
     "参考尺操作\n上/下键移动 0 点\n可查看正负刻度\n按确定进入量角器\n\n量角器\n右侧有白色固定边\n标注此边贴紧靶面\n设备与靶面垂直\n黄线以底部为轴\n每次转 0.5 度\n长按连续旋转",
@@ -600,7 +601,7 @@ static void render_range_intro(lv_obj_t *scr, const archery_flow_t *flow) {
 
 static void render_range_config(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "测距参数");
-    static const char *target_names[] = {"40半", "40全", "80半", "80全", "122全"};
+    static const char *target_names[] = {"40半", "40全", "80半", "80六环", "80全", "122全"};
     static const char *names[] = {"靶面", "眼屏距离", "眼屏距离校准", "靶面倾角", "开始测距"};
     char line[32];
     for (uint8_t row = 0; row < 5; row++) {
@@ -616,7 +617,7 @@ static void render_range_config(lv_obj_t *scr, const archery_flow_t *flow) {
                                     selected ? C_GOLD : C_TEXT);
         lv_obj_align(name, LV_ALIGN_LEFT_MID, 10, 0);
         switch (row) {
-        case 0: snprintf(line, sizeof(line), "%s", target_names[flow->range_target < 5u ? flow->range_target : 0u]); break;
+        case 0: snprintf(line, sizeof(line), "%s", target_names[flow->range_target < 6u ? flow->range_target : 0u]); break;
         case 1: snprintf(line, sizeof(line), "%u cm", (unsigned)flow->range_eye_cm); break;
         case 2: snprintf(line, sizeof(line), "%s", flow->range_cal_k ? "已校准" : "未校准"); break;
         case 3: snprintf(line, sizeof(line), "%u°", (unsigned)flow->range_tilt_deg); break;
@@ -638,11 +639,11 @@ static void render_range_cal(lv_obj_t *scr, const archery_flow_t *flow) {
     int h = flow->range_cal_h;
     if (h < 10) h = 10;
     if (h > 270) h = 270;
-    static const uint16_t cal_full_mm[] = {200, 400, 400, 800, 1220};
-    static const char *cal_target_names[] = {"40半", "40全", "80半", "80全", "122全"};
+    static const uint16_t cal_full_mm[] = {200, 400, 400, 480, 800, 1220};
+    static const char *cal_target_names[] = {"40半", "40全", "80半", "80六环", "80全", "122全"};
     static const uint16_t cal_cos[16] = {1000,1000,999,999,998,996,995,993,
                                          990,988,985,982,978,974,970,966};
-    const uint8_t cal_target = flow->range_target < 5u ? flow->range_target : 0u;
+    const uint8_t cal_target = flow->range_target < 6u ? flow->range_target : 0u;
     const uint8_t cal_tilt = flow->range_tilt_deg > 15u ? 15u : flow->range_tilt_deg;
     const uint16_t size_mm = (uint16_t)((uint32_t)cal_full_mm[cal_target] * cal_cos[cal_tilt] / 1000u);
     const uint32_t d_mm = (uint32_t)flow->range_cal_m * 1000u;
@@ -698,11 +699,11 @@ static void render_range_cal(lv_obj_t *scr, const archery_flow_t *flow) {
 
 static void render_range_view(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "测距刻度");
-    static const uint16_t full_mm[] = {200, 400, 400, 800, 1220};
-    static const char *target_names[] = {"40半", "40全", "80半", "80全", "122全"};
+    static const uint16_t full_mm[] = {200, 400, 400, 480, 800, 1220};
+    static const char *target_names[] = {"40半", "40全", "80半", "80六环", "80全", "122全"};
     static const uint16_t cos_permille[16] = {1000,1000,999,999,998,996,995,993,
                                               990,988,985,982,978,974,970,966};
-    const uint8_t target = flow->range_target < 5u ? flow->range_target : 0u;
+    const uint8_t target = flow->range_target < 6u ? flow->range_target : 0u;
     const uint8_t tilt = flow->range_tilt_deg > 15u ? 15u : flow->range_tilt_deg;
     const uint16_t size_mm = (uint16_t)((uint32_t)full_mm[target] * cos_permille[tilt] / 1000u);
     const int bottom = 286;
@@ -1337,11 +1338,11 @@ static void render_wifi_password(lv_obj_t *scr, const archery_flow_t *flow) {
 static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "设置");
 
-    static const char *row_names[] = {"靶子类型", "屏幕方向", "屏幕亮度",
-                                      "息屏时间", "记录内十", "每组计时",
+    static const char *row_names[] = {"靶子类型", "记录内十", "每组计时",
                                       "倒数十秒语音", "语音录靶", "滚动录入",
-                                      "提示音量", "保存Wi-Fi密码", "Beta功能测试",
-                                      "使用说明"};
+                                      "提示音量", "屏幕方向", "屏幕亮度",
+                                      "息屏时间", "息屏后关机", "保存Wi-Fi密码",
+                                      "Beta功能测试", "使用说明"};
     char value[24];
     const uint8_t visible = 6;
     uint8_t offset = flow->settings_row >= visible ? (uint8_t)(flow->settings_row - visible + 1u) : 0u;
@@ -1361,45 +1362,34 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
         if (row == 0) {
             snprintf(value, sizeof(value), "%s", target_name(flow->settings.target));
         } else if (row == 1) {
-            snprintf(value, sizeof(value), "%s",
-                     flow->settings.rotate ? "倒转" : "正常");
-        } else if (row == 2) {
-            snprintf(value, sizeof(value), "%u%%",
-                     (unsigned)flow->settings.brightness);
-        } else if (row == 3 && flow->settings.off_seconds == 0) {
-            snprintf(value, sizeof(value), "不息屏");
-        } else if (row == 3) {
-            snprintf(value, sizeof(value), "%u 秒",
-                     (unsigned)flow->settings.off_seconds);
-        } else if (row == 4) {
             snprintf(value, sizeof(value), "%s", flow->settings.record_x ? "开" : "关");
-        } else if (row == 5) {
-            if (flow->settings.timer_seconds == 0u) {
-                snprintf(value, sizeof(value), "关");
-            } else {
-                snprintf(value, sizeof(value), "%u 秒/支",
-                         (unsigned)flow->settings.timer_seconds);
-            }
-        } else if (row == 6) {
+        } else if (row == 2) {
+            if (flow->settings.timer_seconds == 0u) snprintf(value, sizeof(value), "关");
+            else snprintf(value, sizeof(value), "%u 秒/支", (unsigned)flow->settings.timer_seconds);
+        } else if (row == 3) {
             static const char *const voicing[] = {"关", "系统", "小豆", "豆包", "男声", "小林", "小章", "猫叫"};
-            snprintf(value, sizeof(value), "%s",
-                     voicing[flow->settings.countdown_voice <= 7u
-                                 ? flow->settings.countdown_voice : 0u]);
+            snprintf(value, sizeof(value), "%s", voicing[flow->settings.countdown_voice <= 7u ? flow->settings.countdown_voice : 0u]);
+        } else if (row == 4) {
+            snprintf(value, sizeof(value), "%s", flow->settings.voice_enabled ? "开" : "关");
+        } else if (row == 5) {
+            snprintf(value, sizeof(value), "%s", flow->settings.roll_entry ? "开" : "关");
+        } else if (row == 6) {
+            snprintf(value, sizeof(value), "%u%%", (unsigned)(flow->settings.beep_volume * 20u));
         } else if (row == 7) {
-            snprintf(value, sizeof(value), "%s",
-                     flow->settings.voice_enabled ? "开" : "关");
+            snprintf(value, sizeof(value), "%s", flow->settings.rotate ? "倒转" : "正常");
         } else if (row == 8) {
-            snprintf(value, sizeof(value), "%s",
-                     flow->settings.roll_entry ? "开" : "关");
+            snprintf(value, sizeof(value), "%u%%", (unsigned)flow->settings.brightness);
+        } else if (row == 9 && flow->settings.off_seconds == 0) {
+            snprintf(value, sizeof(value), "不息屏");
         } else if (row == 9) {
-            snprintf(value, sizeof(value), "%u%%",
-                     (unsigned)(flow->settings.beep_volume * 20u));
+            snprintf(value, sizeof(value), "%u 秒", (unsigned)flow->settings.off_seconds);
         } else if (row == 10) {
-            snprintf(value, sizeof(value), "%s",
-                     flow->settings.wifi_save ? "开" : "关");
+            snprintf(value, sizeof(value), "%u 分钟", (unsigned)archery_power_deep_minutes());
         } else if (row == 11) {
-            snprintf(value, sizeof(value), "%s", "进入");
+            snprintf(value, sizeof(value), "%s", flow->settings.wifi_save ? "开" : "关");
         } else if (row == 12) {
+            snprintf(value, sizeof(value), "%s", "进入");
+        } else if (row == 13) {
             snprintf(value, sizeof(value), "%s", "进入");
         }
         lv_obj_t *number = make_label(card, value, ARCHERY_FONT_BODY,

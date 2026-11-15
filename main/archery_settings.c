@@ -131,36 +131,12 @@ bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delt
         return true;
     }
     if (row == 1) {
-        // 只有两个方向，任一方向调整都相当于切换。
-        const uint8_t next = settings->rotate ? 0u : 1u;
-        if (next == settings->rotate) return false;
-        settings->rotate = next;
-        return true;
-    }
-    if (row == 2) {
-        int index = brightness_index(settings->brightness);
-        if (index < 0) index = 0;
-        const int next = index + delta;
-        if (next < 0 || next >= (int)BRIGHTNESS_COUNT || next == index) return false;
-        settings->brightness = s_brightness[next];
-        return true;
-    }
-    if (row == 3) {
-        int index = off_index(settings->off_seconds);
-        if (index < 0) index = 0;
-        const int next = index + delta;
-        if (next < 0 || next >= (int)OFF_COUNT || next == index) return false;
-        settings->off_seconds = s_off_seconds[next];
-        return true;
-    }
-    if (row == 4) {
-        // 记录内十：开/关两态，任一方向都相当于切换。
         const uint8_t next = settings->record_x ? 0u : 1u;
         if (next == settings->record_x) return false;
         settings->record_x = next;
         return true;
     }
-    if (row == 5) {
+    if (row == 2) {
         static const uint8_t values[] = {0u, 20u, 30u, 40u};
         int index = 0;
         for (int i = 0; i < 4; i++) {
@@ -173,41 +149,56 @@ bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delt
         settings->timer_seconds = values[next];
         return true;
     }
-    if (row == 6) {
-        const uint8_t next = (uint8_t)((settings->countdown_voice + 1u) % 8u);
-        settings->countdown_voice = next;
+    if (row == 3) {
+        settings->countdown_voice = (uint8_t)((settings->countdown_voice + 1u) % 8u);
         return true;
     }
-    if (row == 7) {
+    if (row == 4) {
         const uint8_t next = settings->voice_enabled ? 0u : 1u;
         if (next == settings->voice_enabled) return false;
         settings->voice_enabled = next;
-        if (next) settings->roll_entry = 0;  // 语音与滚动录入互斥
+        if (next) settings->roll_entry = 0;
         return true;
     }
-    if (row == 8) {
+    if (row == 5) {
         const uint8_t next = settings->roll_entry ? 0u : 1u;
         if (next == settings->roll_entry) return false;
         settings->roll_entry = next;
-        if (next) settings->voice_enabled = 0;  // 语音与滚动录入互斥
+        if (next) settings->voice_enabled = 0;
         return true;
     }
-    if (row == 9) {
+    if (row == 6) {
         const int next = (int)settings->beep_volume + delta;
         if (next < 0 || next >= 6 || next == (int)settings->beep_volume) return false;
         settings->beep_volume = (uint8_t)next;
         return true;
     }
-    if (row == 10) {
-        const uint8_t next = settings->wifi_save ? 0u : 1u;
-        if (next == settings->wifi_save) return false;
-        settings->wifi_save = next;
+    if (row == 7) {
+        const uint8_t next = settings->rotate ? 0u : 1u;
+        if (next == settings->rotate) return false;
+        settings->rotate = next;
+        return true;
+    }
+    if (row == 8) {
+        int index = brightness_index(settings->brightness);
+        if (index < 0) index = 0;
+        const int next = index + delta;
+        if (next < 0 || next >= (int)BRIGHTNESS_COUNT || next == index) return false;
+        settings->brightness = s_brightness[next];
+        return true;
+    }
+    if (row == 9) {
+        int index = off_index(settings->off_seconds);
+        if (index < 0) index = 0;
+        const int next = index + delta;
+        if (next < 0 || next >= (int)OFF_COUNT || next == index) return false;
+        settings->off_seconds = s_off_seconds[next];
         return true;
     }
     if (row == 11) {
-        const uint8_t next = settings->auto_mode ? 0u : 1u;
-        if (next == settings->auto_mode) return false;
-        settings->auto_mode = next;
+        const uint8_t next = settings->wifi_save ? 0u : 1u;
+        if (next == settings->wifi_save) return false;
+        settings->wifi_save = next;
         return true;
     }
     return false;

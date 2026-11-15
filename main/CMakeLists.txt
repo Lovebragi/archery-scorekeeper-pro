@@ -8,6 +8,7 @@ idf_component_register(
          "archery_app.c"
          "archery_clock.c"
          "archery_flow.c"
+         "archery_power.c"
          "archery_history.c"
          "archery_layout.c"
          "archery_logbuf.c"

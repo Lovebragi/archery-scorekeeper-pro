@@ -97,6 +97,7 @@ typedef enum {
     ARCHERY_ACT_SIGHT_SAVE,
     ARCHERY_ACT_METRONOME_TOGGLE,
     ARCHERY_ACT_METRONOME_STOP,
+    ARCHERY_ACT_POWER_CYCLE,
     ARCHERY_ACT_VOICE_VERIFY,        // 离开联网页：停止配网热点
     ARCHERY_ACT_WIFI_CONNECT_PASSWORD,  // 用设备上输入的密码连接（flow->wifi_password）
     ARCHERY_ACT_TIMER_START,            // 进入计时页：上层启动 1 秒 + 10 秒准备 + 射击倒计时

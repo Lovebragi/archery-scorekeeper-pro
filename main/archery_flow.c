@@ -573,7 +573,7 @@ static archery_act_t handle_ruler(archery_flow_t *flow, archery_key_t key) {
             if (flow->ruler_offset < -19) flow->ruler_offset = -19;
         } else {
             flow->ruler_angle_tenths += 5;
-            if (flow->ruler_angle_tenths > 150) flow->ruler_angle_tenths = 150;
+            if (flow->ruler_angle_tenths > 200) flow->ruler_angle_tenths = 200;
         }
     } else if (key == ARCHERY_KEY_DOWN) {
         if (flow->ruler_mode == 0) {
@@ -581,7 +581,7 @@ static archery_act_t handle_ruler(archery_flow_t *flow, archery_key_t key) {
             if (flow->ruler_offset > 19) flow->ruler_offset = 19;
         } else {
             flow->ruler_angle_tenths -= 5;
-            if (flow->ruler_angle_tenths < -150) flow->ruler_angle_tenths = -150;
+            if (flow->ruler_angle_tenths < -200) flow->ruler_angle_tenths = -200;
         }
     } else if (key == ARCHERY_KEY_OK) {
         flow->ruler_mode = flow->ruler_mode ? 0u : 1u;
@@ -710,7 +710,7 @@ static archery_act_t handle_range_intro(archery_flow_t *flow, archery_key_t key)
 }
 
 static uint16_t range_target_mm(uint8_t target) {
-    static const uint16_t sizes[] = {200, 400, 400, 800, 1220};  // 40半/40全/80半/80全/122全
+    static const uint16_t sizes[] = {200, 400, 400, 480, 800, 1220};  // 40半/40全/80半/80六环/80全/122全
     return sizes[target < 5u ? target : 0u];
 }
 
@@ -747,7 +747,7 @@ static archery_act_t handle_range_config(archery_flow_t *flow, archery_key_t key
         }
         switch (flow->range_row) {
         case 0:
-            flow->range_target = (uint8_t)((flow->range_target + (delta > 0 ? 1 : 4)) % 5u);
+            flow->range_target = (uint8_t)((flow->range_target + (delta > 0 ? 1 : 5)) % 6u);
             flow->range_mode = 0;
             break;
         case 1: {
@@ -910,16 +910,19 @@ static archery_act_t handle_settings(archery_flow_t *flow, archery_key_t key) {
                                  ? 0u : (uint8_t)(flow->settings_row + 1u);
         break;
     case ARCHERY_KEY_OK:
-        if (flow->settings_row == 11u) {
+        if (flow->settings_row == 12u) {
             flow->beta_row = 0;
             flow->page = ARCHERY_PAGE_BETA;
             break;
         }
-        if (flow->settings_row == 12u) {
+        if (flow->settings_row == 13u) {
             flow->manual_scroll = 0;
     flow->manual_page = 0;
             flow->page = ARCHERY_PAGE_MANUAL;
             break;
+        }
+        if (flow->settings_row == 10u) {
+            return ARCHERY_ACT_POWER_CYCLE;
         }
         if (flow->settings_row < ARCHERY_SETTINGS_ROWS &&
             settings_cycle_value(&flow->settings, flow->settings_row)) {

@@ -12,6 +12,7 @@
 #include "archery_logbuf.h"
 #include "archery_name.h"
 #include "archery_history.h"
+#include "archery_power.h"
 #include "archery_metro.h"
 #include "archery_score.h"
 #include "archery_settings.h"
@@ -26,6 +27,7 @@
 #include "bsp_battery.h"
 #include "bsp_button.h"
 #include "bsp_display.h"
+#include "bsp_i2c.h"
 #include "bsp_pins.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -804,6 +806,9 @@ static void handle_key(archery_key_t key) {
     case ARCHERY_ACT_METRONOME_STOP:
         metro_stop();
         break;
+    case ARCHERY_ACT_POWER_CYCLE:
+        archery_power_cycle_deep();
+        break;
     case ARCHERY_ACT_NONE:
         break;
     }
@@ -1201,6 +1206,23 @@ static void on_key(bsp_btn_t btn, bsp_btn_ev_t event, void *user) {
 
 // 息屏 + 浅睡；任意键唤醒。返回后页面与训练状态都还在（RAM 不掉电）。
 // 全程持有 LVGL 锁：确保没有正在进行的刷屏，唤醒后再重绘一帧。
+static void deep_sleep_now(void) {
+    int level = 1;
+    if (bsp_button_read_mv() < BSP_BTN_MV_RELEASED_MIN) return;
+    (void)bsp_battery_sleep();
+    (void)bsp_audio_sleep();
+    (void)bsp_audio_prepare_deep_sleep();
+    (void)bsp_i2c_prepare_deep_sleep();
+    if (!bsp_lvgl_lock(1000)) esp_restart();
+    (void)bsp_display_prepare_deep_sleep();
+    (void)bsp_button_prepare_deep_sleep(&level);
+    (void)esp_deep_sleep_enable_gpio_wakeup(1ULL << BSP_BTN_GPIO,
+                                            ESP_GPIO_WAKEUP_GPIO_LOW);
+    ESP_LOGI(TAG, "进入深睡眠");
+    esp_deep_sleep_start();
+    esp_restart();
+}
+
 static void light_sleep_now(void) {
     s_last_input_us = esp_timer_get_time();
 
@@ -1227,6 +1249,10 @@ static void light_sleep_now(void) {
     const esp_err_t display_err = bsp_display_set_power(false);
     esp_err_t wake_err = gpio_wakeup_enable((gpio_num_t)BSP_BTN_GPIO, GPIO_INTR_LOW_LEVEL);
     if (wake_err == ESP_OK) wake_err = esp_sleep_enable_gpio_wakeup();
+    const uint8_t deep_minutes = archery_power_deep_minutes();
+    if (wake_err == ESP_OK && deep_minutes > 0) {
+        wake_err = esp_sleep_enable_timer_wakeup((uint64_t)deep_minutes * 60ULL * 1000000ULL);
+    }
     int level = 1;
     const esp_err_t suspend_err = bsp_button_suspend_for_light_sleep(&level);
 
@@ -1247,12 +1273,23 @@ static void light_sleep_now(void) {
     }
 
     ESP_LOGI(TAG, "息屏浅睡，低电平唤醒");
+    const esp_err_t audio_sleep_err = bsp_audio_sleep();
+    if (audio_sleep_err != ESP_OK) {
+        ESP_LOGW(TAG, "ES8311 休眠失败: %s", esp_err_to_name(audio_sleep_err));
+    }
     const esp_err_t sleep_err = esp_light_sleep_start();
     const uint32_t causes = esp_sleep_get_wakeup_causes();
+    if ((causes & (1u << ESP_SLEEP_WAKEUP_TIMER)) &&
+        !(causes & (1u << ESP_SLEEP_WAKEUP_GPIO))) {
+        bsp_lvgl_unlock();
+        deep_sleep_now();
+        return;
+    }
 
     // ---- 唤醒 ----
     (void)gpio_wakeup_disable((gpio_num_t)BSP_BTN_GPIO);
     (void)esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_GPIO);
+    (void)bsp_audio_wake();
     (void)bsp_display_set_power(true);
     bsp_display_backlight(s_flow.settings.brightness);
     // 唤醒那一下的按键还在按着：先吞掉，直到松手（或兜底时限）。
