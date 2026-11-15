@@ -8,6 +8,24 @@ Release history for the archery scorekeeper application. The repository-wide
 [changelog](../CHANGELOG.md) tracks the AI Passport project itself; this file
 follows the application's firmware versions.
 
+## 1.6.0 — 2026-11-15
+
+### Added
+
+- Rangefinder target preset for the World Archery 80 cm six-ring face (rings 5-10, 48 cm outer diameter).
+- Settings option for automatic deep sleep after 3, 5, 10 or 15 minutes with the screen off, shown as "shutdown after screen off".
+- Protractor range expanded to ±20 degrees.
+- Low-power path now suspends the ES8311 codec and I2S before light sleep.
+
+### Changed
+
+- Settings order is now target, record inner ten, group timer, countdown voice, voice entry, roll entry, beep volume, screen direction, brightness, screen-off time, shutdown after screen off, save Wi-Fi password, Beta tests and user manual.
+- Deep-sleep wake restarts the application and returns to the home screen.
+
+### Fixed
+
+- The settings values and special actions now follow the reordered rows instead of the old indices.
+
 ## 1.5.9 — 2026-11-14
 
 ### Added
