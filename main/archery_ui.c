@@ -1384,7 +1384,9 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
         } else if (row == 9) {
             snprintf(value, sizeof(value), "%u 秒", (unsigned)flow->settings.off_seconds);
         } else if (row == 10) {
-            snprintf(value, sizeof(value), "%u 分钟", (unsigned)archery_power_deep_minutes());
+            const uint8_t deep_min = archery_power_deep_minutes();
+            if (deep_min == 0) snprintf(value, sizeof(value), "%s", "关");
+            else snprintf(value, sizeof(value), "%u 分钟", (unsigned)deep_min);
         } else if (row == 11) {
             snprintf(value, sizeof(value), "%s", flow->settings.wifi_save ? "开" : "关");
         } else if (row == 12) {

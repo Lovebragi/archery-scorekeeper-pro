@@ -8,6 +8,16 @@ Release history for the archery scorekeeper application. The repository-wide
 [changelog](../CHANGELOG.md) tracks the AI Passport project itself; this file
 follows the application's firmware versions.
 
+## 1.6.1 — 2026-11-16
+
+### Added
+
+- "Shutdown after screen off" now has an Off choice, and Off is the default.
+
+### Changed
+
+- Deep sleep is no longer enabled automatically for existing or new users until they select 3, 5, 10 or 15 minutes.
+
 ## 1.6.0 — 2026-11-15
 
 ### Added
