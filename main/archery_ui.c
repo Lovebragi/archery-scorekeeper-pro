@@ -291,7 +291,7 @@ static void render_home(lv_obj_t *scr, const archery_flow_t *flow) {
              target_ring_range(flow->settings.target));
     centered_label(scr, range, ARCHERY_FONT_BODY, C_MUTED, 136);
 
-    static const char *items[ARCHERY_HOME_ITEMS] = {"开始训练", "随机挑战", "历史记录",
+    static const char *items[ARCHERY_HOME_ITEMS] = {"开始训练", "秘境挑战", "历史记录",
                                                     "日期时间", "射箭工具", "设置", "联网"};
     for (uint8_t i = 0; i < ARCHERY_HOME_ITEMS; i++) {
         const archery_rect_t rect = {32, (int16_t)(160 + i * 19), 176, 19};
