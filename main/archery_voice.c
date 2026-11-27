@@ -1,16 +1,12 @@
 // main/archery_voice.c —— 实验：PTT 报靶语音上传与结果解析。
 #include "archery_voice.h"
 #include "esp_timer.h"
-#include "archery_countdown_pcm.h"
-#include "archery_countdown_system_pcm.h"
-#include "archery_countdown_bao_pcm.h"
-#include "archery_countdown_male_pcm.h"
-#include "archery_countdown_xiaolin_pcm.h"
 #include "archery_countdown_xiaozhang_pcm.h"
+#include "archery_countdown_bao_pcm.h"
+#include "archery_countdown_xiaolin_pcm.h"
 #include "archery_bar_voice_pcm.h"
 #include "archery_bar_voice_xiaolin_pcm.h"
 #include "archery_bar_voice_xiaozhang_pcm.h"
-#include "archery_cat_pcm.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,7 +51,7 @@ static char s_api_key[192];
 static char s_token[96];
 static uint8_t s_beep_volume = 60;
 static bool s_audio_ready;
-static uint8_t s_countdown_mode = 3;
+static uint8_t s_countdown_mode = 1;
 static voice_endpoint_t s_endpoint;
 static SemaphoreHandle_t s_start_sem;
 static TaskHandle_t s_task;
@@ -560,42 +556,10 @@ static void prewarm_task(void *arg) {
     vTaskDelete(NULL);
 }
 
-void archery_voice_set_countdown_voice(uint8_t mode) { s_countdown_mode = mode > 7 ? 7 : mode; }
+void archery_voice_set_countdown_voice(uint8_t mode) { s_countdown_mode = mode > 4 ? 4 : mode; }
 
 void archery_voice_set_beep_volume(uint8_t percent) {
     s_beep_volume = percent > 100 ? 100 : percent;
-}
-
-static const int16_t *countdown_clip(uint8_t number, unsigned *samples) {
-    switch (number) {
-    case 1: *samples = countdown_1_samples; return countdown_1;
-    case 2: *samples = countdown_2_samples; return countdown_2;
-    case 3: *samples = countdown_3_samples; return countdown_3;
-    case 4: *samples = countdown_4_samples; return countdown_4;
-    case 5: *samples = countdown_5_samples; return countdown_5;
-    case 6: *samples = countdown_6_samples; return countdown_6;
-    case 7: *samples = countdown_7_samples; return countdown_7;
-    case 8: *samples = countdown_8_samples; return countdown_8;
-    case 9: *samples = countdown_9_samples; return countdown_9;
-    case 10: *samples = countdown_10_samples; return countdown_10;
-    default: *samples = 0; return NULL;
-    }
-}
-
-static const int16_t *system_clip(uint8_t number, unsigned *samples) {
-    switch (number) {
-    case 1: *samples = countdown_sys_1_samples; return countdown_sys_1;
-    case 2: *samples = countdown_sys_2_samples; return countdown_sys_2;
-    case 3: *samples = countdown_sys_3_samples; return countdown_sys_3;
-    case 4: *samples = countdown_sys_4_samples; return countdown_sys_4;
-    case 5: *samples = countdown_sys_5_samples; return countdown_sys_5;
-    case 6: *samples = countdown_sys_6_samples; return countdown_sys_6;
-    case 7: *samples = countdown_sys_7_samples; return countdown_sys_7;
-    case 8: *samples = countdown_sys_8_samples; return countdown_sys_8;
-    case 9: *samples = countdown_sys_9_samples; return countdown_sys_9;
-    case 10: *samples = countdown_sys_10_samples; return countdown_sys_10;
-    default: *samples = 0; return NULL;
-    }
 }
 
 static const int16_t *bao_clip(uint8_t number, unsigned *samples) {
@@ -619,12 +583,10 @@ void archery_voice_play_countdown(uint8_t number) {
     unsigned samples = 0;
     if (s_countdown_mode == 0) return;
     const int16_t *clip = NULL;
-    if (s_countdown_mode == 1) clip = system_clip(number, &samples);
-    else if (s_countdown_mode == 2) clip = countdown_clip(number, &samples);
-    else if (s_countdown_mode == 3) clip = bao_clip(number, &samples);
-    else if (s_countdown_mode == 4) clip = archery_countdown_male_clip(number, &samples);
-    else if (s_countdown_mode == 5) clip = archery_countdown_xiaolin_clip(number, &samples);
-    else clip = archery_countdown_xiaozhang_clip(number, &samples);
+    if (s_countdown_mode == 1) clip = bao_clip(number, &samples);
+    else if (s_countdown_mode == 3) clip = archery_countdown_xiaolin_clip(number, &samples);
+    else if (s_countdown_mode == 4) clip = archery_countdown_xiaozhang_clip(number, &samples);
+    else return;
     if (!clip || samples == 0) return;
     if (!s_audio_ready) {
         if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) {
@@ -707,46 +669,6 @@ void archery_voice_metronome_bao_bar(uint8_t number, uint8_t volume_percent) {
     const unsigned count = samples < 6720u ? samples : 6720u;
     bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
     (void)bsp_audio_write(clip, (size_t)count * sizeof(clip[0]));
-}
-
-void archery_voice_cat_meow(uint8_t volume_percent) {
-    if (volume_percent == 0) return;
-    if (!s_audio_ready) {
-        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
-        s_audio_ready = true;
-    }
-    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
-    (void)bsp_audio_write(archery_cat_meow, sizeof(archery_cat_meow));
-}
-
-void archery_voice_cat_meow_fast(uint8_t volume_percent) {
-    if (volume_percent == 0) return;
-    if (!s_audio_ready) {
-        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
-        s_audio_ready = true;
-    }
-    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
-    (void)bsp_audio_write(archery_cat_meow_fast, sizeof(archery_cat_meow_fast));
-}
-
-void archery_voice_cat_three(uint8_t volume_percent) {
-    if (volume_percent == 0) return;
-    if (!s_audio_ready) {
-        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
-        s_audio_ready = true;
-    }
-    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
-    (void)bsp_audio_write(archery_cat_three, sizeof(archery_cat_three));
-}
-
-void archery_voice_cat_purr(uint8_t volume_percent) {
-    if (volume_percent == 0) return;
-    if (!s_audio_ready) {
-        if (bsp_audio_init() != ESP_OK || bsp_audio_set_format(16000, 16, 1) != ESP_OK) return;
-        s_audio_ready = true;
-    }
-    bsp_audio_set_volume(volume_percent > 100 ? 100 : volume_percent);
-    (void)bsp_audio_write(archery_cat_purr, sizeof(archery_cat_purr));
 }
 
 void archery_voice_beep_warning(void) {

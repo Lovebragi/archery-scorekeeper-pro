@@ -10,9 +10,11 @@
 
 LV_FONT_DECLARE(archery_font_16);
 LV_FONT_DECLARE(archery_font_20);
+LV_FONT_DECLARE(archery_font_20_bold);
 
 #define ARCHERY_FONT_BODY  (&archery_font_16)
 #define ARCHERY_FONT_TITLE (&archery_font_20)
+#define ARCHERY_FONT_BOLD  (&archery_font_20_bold)
 #define ARCHERY_FONT_NUMBER (&lv_font_montserrat_20)
 #define ARCHERY_FONT_BIG   (&lv_font_montserrat_40)
 

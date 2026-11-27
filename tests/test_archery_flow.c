@@ -45,28 +45,16 @@ static void test_home_and_setup(void) {
     assert(flow.setup_arrows == ARCHERY_DEFAULT_ARROWS);
 
 
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 1);
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 2);
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 3);
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 4);
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 5);
+    for (uint8_t i = 1; i < ARCHERY_HOME_ITEMS; i++) {
+        press(&flow, ARCHERY_KEY_DOWN);
+        assert(flow.home_select == i);
+    }
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.home_select == 0);
-    press(&flow, ARCHERY_KEY_UP);
-    assert(flow.home_select == 5);
-    press(&flow, ARCHERY_KEY_UP);
-    assert(flow.home_select == 4);
-    press(&flow, ARCHERY_KEY_UP);
-    assert(flow.home_select == 3);
-    press(&flow, ARCHERY_KEY_UP);
-    assert(flow.home_select == 2);
-    press(&flow, ARCHERY_KEY_UP);
-    assert(flow.home_select == 1);
+    for (int i = (int)ARCHERY_HOME_ITEMS - 1; i > 0; i--) {
+        press(&flow, ARCHERY_KEY_UP);
+        assert(flow.home_select == i);
+    }
     press(&flow, ARCHERY_KEY_UP);
     assert(flow.home_select == 0);
 
@@ -431,16 +419,11 @@ static void test_triple_target_setup_and_entry(void) {
 static void test_settings_page(void) {
     archery_flow_t flow;
     archery_flow_init(&flow);
-    press(&flow, ARCHERY_KEY_DOWN);
-    press(&flow, ARCHERY_KEY_DOWN);
-    press(&flow, ARCHERY_KEY_DOWN);
-    press(&flow, ARCHERY_KEY_DOWN);
+    for (int i = 0; i < 5; i++) press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_OK);
     assert(flow.page == ARCHERY_PAGE_SETTINGS);
     assert(flow.settings_row == 0);
-    assert(flow.settings.target == ARCHERY_TARGET_HALF_40);
 
-    // 确定循环当前行：半靶 -> 三联 -> 全靶 -> 半靶
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.target == ARCHERY_TARGET_TRIPLE_40H);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
@@ -452,92 +435,107 @@ static void test_settings_page(void) {
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.target == ARCHERY_TARGET_HALF_40);
 
-    // 上下只移动选中行，并在首尾循环
     assert(archery_flow_handle(&flow, ARCHERY_KEY_UP) == ARCHERY_ACT_NONE);
     assert(flow.settings_row == ARCHERY_SETTINGS_ROWS - 1);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_DOWN) == ARCHERY_ACT_NONE);
     assert(flow.settings_row == 0);
 
-    // 方向：确定切换
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 1);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.rotate == 0);
+    assert(flow.settings.record_x == 1);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.rotate == 1);
+    assert(flow.settings.record_x == 0);
 
-    // 亮度、息屏、记录内十、计时
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 2);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.brightness == 40);
+    assert(flow.settings.timer_seconds == 20);
 
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 3);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.off_seconds == 15);
+    assert(flow.settings.countdown_voice == 3);
 
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 4);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.record_x == 1);
+    assert(flow.settings.voice_enabled == 0);
 
     press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 5);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.timer_seconds == 20);
-
-    // 倒数十秒语音：豆包 -> 关 -> 系统 -> 小豆 -> 豆包
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.settings_row == 6);
-    assert(flow.settings.countdown_voice == 3);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 4);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 5);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 6);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 7);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 0);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 1);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 2);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.countdown_voice == 3);
-
-    // 语音、滚动录入、音量、Wi-Fi
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.settings_row == 7);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
-    assert(flow.settings.voice_enabled == 0);
-
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.settings_row == 8);
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.roll_entry == 1);
 
     press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.settings_row == 9);
-    assert(flow.settings.beep_volume == 3);
+    assert(flow.settings_row == 6);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.beep_volume == 4);
 
     press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.settings_row == 7);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
+    assert(flow.settings.rotate == 0);
+
+    press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.settings_row == 8);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
+    assert(flow.settings.brightness == 40);
+
+    press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.settings_row == 9);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
+    assert(flow.settings.off_seconds == 15);
+
+    press(&flow, ARCHERY_KEY_DOWN);
     assert(flow.settings_row == 10);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_POWER_CYCLE);
+
+    press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.settings_row == 11);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_SETTINGS_CHANGED);
     assert(flow.settings.wifi_save == 0);
 
-    // 长按确定保存并回主页
-    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK_LONG) == ARCHERY_ACT_SETTINGS_SAVE);
+    press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.settings_row == 12);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_NONE);
+    assert(flow.page == ARCHERY_PAGE_BETA);
+
+    press(&flow, ARCHERY_KEY_OK_LONG);
+    assert(flow.page == ARCHERY_PAGE_SETTINGS);
+    press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.settings_row == 13);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_NONE);
+    assert(flow.page == ARCHERY_PAGE_MANUAL);
+
+    press(&flow, ARCHERY_KEY_OK_LONG);
+    assert(flow.page == ARCHERY_PAGE_SETTINGS);
+    assert(flow.settings_row == 13);
+    press(&flow, ARCHERY_KEY_OK_LONG);
+    assert(flow.page == ARCHERY_PAGE_HOME);
+}
+
+static void test_challenge_page(void) {
+    archery_flow_t flow;
+    archery_flow_init(&flow);
+    flow.home_select = 1;
+    press(&flow, ARCHERY_KEY_OK);
+    assert(flow.page == ARCHERY_PAGE_DISCLAIMER);
+    press(&flow, ARCHERY_KEY_OK);
+    assert(flow.page == ARCHERY_PAGE_STORY);
+    press(&flow, ARCHERY_KEY_OK);
+    assert(flow.page == ARCHERY_PAGE_CHALLENGE);
+    assert(!flow.challenge.generated);
+    assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) ==
+           ARCHERY_ACT_CHALLENGE_GENERATE);
+    press(&flow, ARCHERY_KEY_OK_LONG);
     assert(flow.page == ARCHERY_PAGE_HOME);
 }
 
 static void test_history_pages(void) {
     archery_flow_t flow;
     archery_flow_init(&flow);
+    press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_DOWN);
     press(&flow, ARCHERY_KEY_OK);
     assert(flow.page == ARCHERY_PAGE_HISTORY);
@@ -630,12 +628,8 @@ static void test_wifi_page(void) {
     archery_flow_t flow;
     archery_flow_init(&flow);
     // 主页五项：下移到「联网」并进入
-    press(&flow, ARCHERY_KEY_DOWN);
-    press(&flow, ARCHERY_KEY_DOWN);
-    press(&flow, ARCHERY_KEY_DOWN);
-    press(&flow, ARCHERY_KEY_DOWN);
-    press(&flow, ARCHERY_KEY_DOWN);
-    assert(flow.home_select == 5);
+    for (int i = 0; i < 6; i++) press(&flow, ARCHERY_KEY_DOWN);
+    assert(flow.home_select == 6);
     assert(archery_flow_handle(&flow, ARCHERY_KEY_OK) == ARCHERY_ACT_WIFI_ENTER);
     assert(flow.page == ARCHERY_PAGE_WIFI);
     assert(flow.wifi_mode == 0 && flow.wifi_row == 0);
@@ -798,6 +792,7 @@ int main(void) {
     test_entry_without_x();
     test_triple_target_setup_and_entry();
     test_settings_page();
+    test_challenge_page();
     test_history_pages();
     test_wifi_page();
     test_wifi_password();

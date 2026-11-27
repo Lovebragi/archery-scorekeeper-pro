@@ -4,6 +4,7 @@
 // action 执行。这样页面流转、边界钳制和按钮语义都可以在主机上单测。
 #pragma once
 
+#include "archery_challenge.h"
 #include "archery_clock.h"
 #include "archery_session.h"
 #include "archery_settings.h"
@@ -40,10 +41,13 @@ typedef enum {
     ARCHERY_PAGE_RANGE_CONFIG,
     ARCHERY_PAGE_RANGE_VIEW,
     ARCHERY_PAGE_RANGE_CAL,
+    ARCHERY_PAGE_CHALLENGE,
+    ARCHERY_PAGE_STORY,
+    ARCHERY_PAGE_DISCLAIMER,
 } archery_page_t;
 
 // 主页入口数：开始训练 / 历史记录 / 设置 / 联网。
-#define ARCHERY_HOME_ITEMS 6u
+#define ARCHERY_HOME_ITEMS 7u
 
 // 录入页行数上限：最多 12 个环值槽位 + 1 行"确认提交"。
 #define ARCHERY_ENTRY_ROWS_MAX (ARCHERY_RING_SLOT_MAX + 1u)
@@ -98,6 +102,10 @@ typedef enum {
     ARCHERY_ACT_METRONOME_TOGGLE,
     ARCHERY_ACT_METRONOME_STOP,
     ARCHERY_ACT_POWER_CYCLE,
+    ARCHERY_ACT_CHALLENGE_GENERATE,
+    ARCHERY_ACT_CHALLENGE_RESULT,
+    ARCHERY_ACT_STORY_START,
+    ARCHERY_ACT_STORY_DONE,
     ARCHERY_ACT_VOICE_VERIFY,        // 离开联网页：停止配网热点
     ARCHERY_ACT_WIFI_CONNECT_PASSWORD,  // 用设备上输入的密码连接（flow->wifi_password）
     ARCHERY_ACT_TIMER_START,            // 进入计时页：上层启动 1 秒 + 10 秒准备 + 射击倒计时
@@ -147,6 +155,12 @@ typedef struct {
     uint8_t auto_check_ok;    // 自动训练检测结果
     uint8_t auto_check_done;
     uint8_t beta_row;
+    archery_challenge_t challenge;
+    uint8_t challenge_choice;  // 0 = 成功, 1 = 失败
+    uint8_t story_index;       // 普通意境 0..9
+    bool story_hidden;
+    uint8_t story_hidden_main;
+    uint8_t story_hidden_set;
     uint8_t tools_row;
     uint8_t sight_row;
     uint8_t sight_editing;

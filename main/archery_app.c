@@ -11,6 +11,8 @@
 #include "archery_flow.h"
 #include "archery_logbuf.h"
 #include "archery_name.h"
+#include "archery_challenge_voice.h"
+#include "archery_story.h"
 #include "archery_history.h"
 #include "archery_power.h"
 #include "archery_metro.h"
@@ -31,6 +33,7 @@
 #include "bsp_pins.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "esp_sleep.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -365,24 +368,7 @@ static void handle_wifi_event(void) {
     redraw();
 }
 
-static bool cat_voice_enabled(void) {
-    return s_flow.settings.countdown_voice == 7u;
-}
-
 static void beep_sequence(int count) {
-    if (cat_voice_enabled()) {
-        const uint8_t volume = (uint8_t)(s_flow.settings.beep_volume * 20u);
-        if (count >= 3) {
-            archery_voice_cat_three(volume);
-        } else if (count == 2) {
-            archery_voice_cat_meow(volume);
-            vTaskDelay(pdMS_TO_TICKS(200));
-            archery_voice_cat_meow(volume);
-        } else {
-            archery_voice_cat_meow(volume);
-        }
-        return;
-    }
     for (int i = 0; i < count; i++) {
         archery_voice_preview_beep();
         if (i + 1 < count) vTaskDelay(pdMS_TO_TICKS(400));
@@ -398,16 +384,6 @@ static void countdown_voice_task(void *arg) {
     uint8_t number;
     for (;;) {
         if (xQueueReceive(s_countdown_q, &number, portMAX_DELAY) == pdTRUE) {
-            if (cat_voice_enabled()) {
-                const uint8_t volume = (uint8_t)(s_flow.settings.beep_volume * 20u);
-                if (number == 0xFFu) archery_voice_beep_warning();
-                else if (number == 0xFEu) beep_sequence(2);
-                else if (number == 0xFDu) beep_sequence(1);
-                else if (number == 0xFCu) archery_voice_cat_three(volume);
-                else if (number == 10u) archery_voice_cat_purr(volume);
-                // 猫叫模式：倒计时只播一次 10 秒呼噜，1～9 不再逐秒报数。
-                continue;
-            }
             switch (number) {
             case 0xFFu: archery_voice_beep_warning(); break;
             case 0xFEu: beep_sequence(2); break;
@@ -576,10 +552,7 @@ static void metro_tick(void) {
         const uint8_t beat = (uint8_t)(music_tick % accent + 1u);
         s_flow.metro_beat = beat;
         const uint8_t volume = (uint8_t)(s_flow.settings.beep_volume * 20u);
-        if (s_flow.metro_count_voice == 5u) {
-            if (beat == 1u) archery_voice_cat_meow_fast(volume);
-            else archery_voice_metronome_click(false, volume);
-        } else if (s_flow.metro_count_voice) {
+        if (s_flow.metro_count_voice) {
             if (beat == 1u) {
                 const uint8_t bar = (uint8_t)((music_tick / accent) % 4u + 1u);
                 if (s_flow.metro_count_voice == 2u) {
@@ -649,6 +622,59 @@ static void auto_check_start(void) {
     redraw();
 }
 
+static uint16_t s_hidden_tenths = 60u;  // 6 项隐藏 × 1%
+static uint8_t s_hidden_cooldown;
+
+static uint8_t challenge_hidden_percent(void) {
+    return (uint8_t)((s_hidden_tenths + 5u) / 10u);
+}
+
+static bool s_story_voice_pending;
+
+#define STORY_SET_COUNT 6u
+#define STORY_LEVEL_COUNT 12u
+
+static uint8_t story_random_start(uint8_t exclude_set) {
+    uint8_t set = (uint8_t)(esp_random() % STORY_SET_COUNT);
+    if (exclude_set < STORY_SET_COUNT && set == exclude_set) {
+        set = (uint8_t)((set + 1u + esp_random() % (STORY_SET_COUNT - 1u)) %
+                        STORY_SET_COUNT);
+    }
+    return (uint8_t)(set * STORY_LEVEL_COUNT);
+}
+
+static void challenge_play_voice(void) {
+    if (!s_flow.challenge.generated) return;
+    archery_challenge_voice_play(s_flow.challenge.main_id,
+                                 s_flow.challenge.mod_ids,
+                                 s_flow.challenge.mod_count,
+                                 s_flow.challenge.difficulty,
+                                 s_flow.settings.beep_volume * 20u);
+}
+
+static void challenge_generate(bool judged_success) {
+    const bool old_hidden = s_flow.challenge.generated &&
+                            archery_challenge_main_is_hidden(s_flow.challenge.main_id);
+    if (judged_success && !old_hidden && s_hidden_tenths < 1000u) {
+        // 普通挑战难度 8 → 每项 +0.8%，六项共 +4.8%。
+        const uint32_t add = 6u * (uint32_t)s_flow.challenge.difficulty;
+        const uint32_t next = (uint32_t)s_hidden_tenths + add;
+        s_hidden_tenths = next >= 1000u ? 1000u : (uint16_t)next;
+    }
+    const bool force_normal = s_hidden_cooldown > 0u;
+    if (!archery_challenge_generate(&s_flow.challenge, esp_random(),
+                                    force_normal ? 0u : challenge_hidden_percent())) {
+        return;
+    }
+    if (archery_challenge_main_is_hidden(s_flow.challenge.main_id)) {
+        s_hidden_tenths = 60u;
+        s_hidden_cooldown = 2u;
+    } else if (s_hidden_cooldown > 0u) {
+        s_hidden_cooldown--;
+    }
+    s_flow.challenge_choice = 0;
+}
+
 static void handle_key(archery_key_t key) {
     const bool was_manual = s_flow.page == ARCHERY_PAGE_MANUAL;
     const uint8_t manual_before = s_flow.manual_page;
@@ -715,8 +741,6 @@ static void handle_key(archery_key_t key) {
                     archery_voice_metronome_xiaolin_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
                 } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 4u) {
                     archery_voice_metronome_xiaozhang_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
-                } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 5u) {
-                    archery_voice_cat_meow_fast((uint8_t)(s_flow.settings.beep_volume * 20u));
                 } else if (s_flow.metro_row == 7u && s_flow.metro_count_voice == 1u) {
                     archery_voice_metronome_bar(1, (uint8_t)(s_flow.settings.beep_volume * 20u));
                 } else {
@@ -809,8 +833,88 @@ static void handle_key(archery_key_t key) {
     case ARCHERY_ACT_POWER_CYCLE:
         archery_power_cycle_deep();
         break;
+    case ARCHERY_ACT_CHALLENGE_GENERATE:
+        challenge_generate(false);
+        if (s_flow.challenge.generated &&
+            archery_challenge_main_is_hidden(s_flow.challenge.main_id)) {
+            s_flow.story_hidden = true;
+            s_flow.story_hidden_main = s_flow.challenge.main_id;
+            s_flow.story_hidden_set = (uint8_t)(esp_random() % 2u);
+            s_flow.story_index = story_random_start(0xFFu);  // 隐藏后随机开始一套
+            s_flow.page = ARCHERY_PAGE_STORY;
+            s_story_voice_pending = true;
+            archery_challenge_voice_play_cue();
+        } else {
+            challenge_play_voice();
+        }
+        break;
+    case ARCHERY_ACT_CHALLENGE_RESULT: {
+        const bool judged_success = s_flow.challenge_choice == 0u;
+        const bool old_hidden = s_flow.challenge.generated &&
+                                archery_challenge_main_is_hidden(s_flow.challenge.main_id);
+        challenge_generate(judged_success);
+        if (!s_flow.challenge.generated) break;
+        if (archery_challenge_main_is_hidden(s_flow.challenge.main_id)) {
+            s_flow.story_hidden = true;
+            s_flow.story_hidden_main = s_flow.challenge.main_id;
+            s_flow.story_hidden_set = (uint8_t)(esp_random() % 2u);
+            s_flow.story_index = story_random_start(0xFFu);  // 隐藏后随机开始一套
+            s_flow.page = ARCHERY_PAGE_STORY;
+            s_story_voice_pending = true;
+            archery_challenge_voice_play_cue();
+        } else if (old_hidden) {
+            s_flow.story_hidden = false;
+            s_flow.page = ARCHERY_PAGE_STORY;
+            s_story_voice_pending = true;
+        } else if (judged_success) {
+            if ((s_flow.story_index % STORY_LEVEL_COUNT) + 1u >= STORY_LEVEL_COUNT) {
+                s_flow.story_index = story_random_start(
+                    (uint8_t)(s_flow.story_index / STORY_LEVEL_COUNT));
+            } else {
+                s_flow.story_index++;
+            }
+            s_flow.story_hidden = false;
+            s_flow.page = ARCHERY_PAGE_STORY;
+            s_story_voice_pending = true;
+        } else {
+            s_flow.page = ARCHERY_PAGE_CHALLENGE;
+            challenge_play_voice();
+        }
+        break;
+    }
+    case ARCHERY_ACT_STORY_START:
+        s_flow.story_hidden = false;
+        s_flow.story_index = story_random_start(0xFFu);
+        break;
+    case ARCHERY_ACT_STORY_DONE:
+        if (!s_flow.challenge.generated) {
+            challenge_generate(false);
+            if (!s_flow.challenge.generated) break;
+            if (archery_challenge_main_is_hidden(s_flow.challenge.main_id)) {
+                s_flow.story_hidden = true;
+                s_flow.story_hidden_main = s_flow.challenge.main_id;
+                s_flow.story_hidden_set = (uint8_t)(esp_random() % 2u);
+                s_flow.story_index = story_random_start(0xFFu);
+                s_flow.page = ARCHERY_PAGE_STORY;
+                s_story_voice_pending = true;
+                archery_challenge_voice_play_cue();
+                break;
+            }
+            s_flow.page = ARCHERY_PAGE_CHALLENGE;
+            challenge_play_voice();
+            break;
+        }
+        if (s_story_voice_pending) {
+            s_story_voice_pending = false;
+            archery_challenge_voice_stop_cue();
+            challenge_play_voice();
+        }
+        break;
     case ARCHERY_ACT_NONE:
         break;
+    }
+    if (s_flow.page != ARCHERY_PAGE_CHALLENGE) {
+        archery_challenge_voice_stop();
     }
     // BPM 在播放中也能立即生效。
     if (was_metro && s_flow.page == ARCHERY_PAGE_METRONOME && s_flow.metro_running &&

@@ -8,6 +8,27 @@ Release history for the archery scorekeeper application. The repository-wide
 [changelog](../CHANGELOG.md) tracks the AI Passport project itself; this file
 follows the application's firmware versions.
 
+## 1.7.0 — 2026-11-28
+
+### Added
+
+- Random challenge mode with 27 normal challenges, 6 hidden challenges, difficulty stars, modifiers, local voice announcements and success/failure result buttons.
+- Six ordinary story themes (72 scenes) and two hidden story themes (12 scenes), with a separate story page before each challenge.
+- Hidden challenge probability with a base 6%, difficulty-weighted increases after normal successes, reset after a hidden challenge and a two-challenge cooldown.
+- Local hidden-challenge flute cue and speech assets; the flute cue plays on the hidden story page.
+
+### Changed
+
+- Countdown voices are now Off, Doubao, Xiaolin and Xiaozhang. System, Xiaodou, cat and male countdown voices were removed to recover flash space.
+- The story deck starts from a random theme each cycle and advances one scene per normal-challenge success.
+- Hidden challenges use the "Secret Realm" story title and the "Secret Realm Challenge" challenge title.
+
+### Fixed
+
+- Missing CJK glyphs for the home name and new challenge/story text.
+- Hidden voice playback at the wrong sample rate.
+- Incompatible modifiers on single-arrow and all-10 challenges.
+
 ## 1.6.1 — 2026-11-16
 
 ### Added
@@ -41,7 +62,7 @@ follows the application's firmware versions.
 ### Added
 
 - Settings now includes a 13-page User Manual covering controls, training, voice entry, timers, history, sight tools, rangefinder calibration, tilt, the reference ruler, the protractor, settings, networking, and common questions.
-- Protractor mode now shows a white right-edge guide labelled "此边贴紧靶面，设备与靶面垂直", rotated for landscape use.
+- Protractor mode now shows a white right-edge guide that means "keep this edge against the target face and the device perpendicular to it", rotated for landscape use.
 
 ### Changed
 

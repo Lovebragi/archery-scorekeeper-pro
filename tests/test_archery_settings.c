@@ -58,9 +58,8 @@ static void test_option_tables(void) {
 
 static void test_adjust(void) {
     archery_settings_t settings;
-    archery_settings_defaults(&settings);  // 40 半靶 / 倒转 / 100% / 30s
+    archery_settings_defaults(&settings);
 
-    // 靶型
     assert(archery_settings_adjust(&settings, 0, 1));
     assert(settings.target == ARCHERY_TARGET_TRIPLE_40H);
     assert(archery_settings_adjust(&settings, 0, 3));
@@ -69,95 +68,75 @@ static void test_adjust(void) {
     assert(archery_settings_adjust(&settings, 0, -4));
     assert(settings.target == ARCHERY_TARGET_HALF_40);
 
-    // 屏幕方向：任意方向调整都相当于切换
+    assert(settings.record_x == 0);
     assert(archery_settings_adjust(&settings, 1, 1));
-    assert(settings.rotate == 0);
-    assert(archery_settings_adjust(&settings, 1, -1));
-    assert(settings.rotate == 1);
-
-    // 亮度：默认 20（最低），向下无效，向上到 40、60
-    assert(!archery_settings_adjust(&settings, 2, -1));
-    assert(settings.brightness == ARCHERY_SETTINGS_DEFAULT_BRIGHTNESS);
-    assert(archery_settings_adjust(&settings, 2, 1));
-    assert(settings.brightness == 40);
-    assert(archery_settings_adjust(&settings, 2, 1));
-    assert(settings.brightness == 60);
-
-    // 息屏时间：默认 0（不息屏）-> 15
-    assert(archery_settings_adjust(&settings, 3, 1));
-    assert(settings.off_seconds == 15);
-    settings.off_seconds = 0;
-    assert(!archery_settings_adjust(&settings, 3, -1));
-    assert(settings.off_seconds == 0);
-
-    // 记录内十：默认关，任一方向切换
-    assert(archery_settings_adjust(&settings, 4, 1));
     assert(settings.record_x == 1);
-    assert(archery_settings_adjust(&settings, 4, -1));
+    assert(archery_settings_adjust(&settings, 1, -1));
     assert(settings.record_x == 0);
 
-    // 每组计时：关 -> 20 -> 30 -> 40，边界钳制
     assert(settings.timer_seconds == 0);
-    assert(archery_settings_adjust(&settings, 5, 1));
+    assert(archery_settings_adjust(&settings, 2, 1));
     assert(settings.timer_seconds == 20);
-    assert(archery_settings_adjust(&settings, 5, 1));
+    assert(archery_settings_adjust(&settings, 2, 1));
     assert(settings.timer_seconds == 30);
-    assert(archery_settings_adjust(&settings, 5, 1));
+    assert(archery_settings_adjust(&settings, 2, 1));
     assert(settings.timer_seconds == 40);
-    assert(!archery_settings_adjust(&settings, 5, 1));
-    assert(archery_settings_adjust(&settings, 5, -1));
+    assert(!archery_settings_adjust(&settings, 2, 1));
+    assert(archery_settings_adjust(&settings, 2, -1));
     assert(settings.timer_seconds == 30);
 
-    // 倒数十秒语音：豆包 -> 关 -> 系统 -> 小豆 -> 豆包
-    assert(settings.countdown_voice == 3);
-    assert(archery_settings_adjust(&settings, 6, 1));
-    assert(settings.countdown_voice == 4);
-    assert(archery_settings_adjust(&settings, 6, 1));
-    assert(settings.countdown_voice == 5);
-    assert(archery_settings_adjust(&settings, 6, 1));
-    assert(settings.countdown_voice == 6);
-    assert(archery_settings_adjust(&settings, 6, 1));
-    assert(settings.countdown_voice == 7);
-    assert(archery_settings_adjust(&settings, 6, 1));
-    assert(settings.countdown_voice == 0);
-    assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.countdown_voice == 1);
-    assert(archery_settings_adjust(&settings, 6, 1));
-    assert(settings.countdown_voice == 2);
-    assert(archery_settings_adjust(&settings, 6, 1));
+    assert(archery_settings_adjust(&settings, 3, 1));
     assert(settings.countdown_voice == 3);
+    assert(archery_settings_adjust(&settings, 3, 1));
+    assert(settings.countdown_voice == 4);
+    assert(archery_settings_adjust(&settings, 3, 1));
+    assert(settings.countdown_voice == 0);
+    assert(archery_settings_adjust(&settings, 3, 1));
+    assert(settings.countdown_voice == 1);
 
-    // 语音输入：默认开，任一方向切换
-    assert(archery_settings_adjust(&settings, 7, 1));
+    assert(archery_settings_adjust(&settings, 4, 1));
     assert(settings.voice_enabled == 0);
-    assert(archery_settings_adjust(&settings, 7, -1));
+    assert(archery_settings_adjust(&settings, 4, -1));
     assert(settings.voice_enabled == 1);
 
-    // 滚动录入：默认关，任一方向切换
     assert(settings.roll_entry == 0);
-    assert(archery_settings_adjust(&settings, 8, 1));
+    assert(archery_settings_adjust(&settings, 5, 1));
     assert(settings.roll_entry == 1);
-    assert(archery_settings_adjust(&settings, 8, -1));
+    assert(archery_settings_adjust(&settings, 5, -1));
     assert(settings.roll_entry == 0);
 
-    // 提示音量：默认 60%（档位 3），可到 0（静音）和 5（100%）
     assert(settings.beep_volume == 3);
-    assert(archery_settings_adjust(&settings, 9, 1));
+    assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.beep_volume == 4);
-    assert(archery_settings_adjust(&settings, 9, -4));
+    assert(archery_settings_adjust(&settings, 6, -4));
     assert(settings.beep_volume == 0);
-    assert(!archery_settings_adjust(&settings, 9, -1));
-    assert(archery_settings_adjust(&settings, 9, 1));
+    assert(!archery_settings_adjust(&settings, 6, -1));
+    assert(archery_settings_adjust(&settings, 6, 1));
     assert(settings.beep_volume == 1);
 
-    // 保存 Wi-Fi 密码：默认开，任一方向切换
-    assert(settings.wifi_save == 1);
-    assert(archery_settings_adjust(&settings, 10, 1));
-    assert(settings.wifi_save == 0);
-    assert(archery_settings_adjust(&settings, 10, -1));
-    assert(settings.wifi_save == 1);
+    assert(settings.rotate == 1);
+    assert(archery_settings_adjust(&settings, 7, 1));
+    assert(settings.rotate == 0);
+    assert(archery_settings_adjust(&settings, 7, -1));
+    assert(settings.rotate == 1);
 
-    // 非法行（没有第 9 行）
+    assert(!archery_settings_adjust(&settings, 8, -1));
+    assert(archery_settings_adjust(&settings, 8, 1));
+    assert(settings.brightness == 40);
+
+    assert(settings.off_seconds == 0);
+    assert(archery_settings_adjust(&settings, 9, 1));
+    assert(settings.off_seconds == 15);
+    settings.off_seconds = 0;
+    assert(!archery_settings_adjust(&settings, 9, -1));
+
+    assert(!archery_settings_adjust(&settings, 10, 1));
+    assert(settings.wifi_save == 1);
+    assert(archery_settings_adjust(&settings, 11, 1));
+    assert(settings.wifi_save == 0);
+    assert(archery_settings_adjust(&settings, 11, -1));
+    assert(settings.wifi_save == 1);
     assert(!archery_settings_adjust(&settings, 12, 1));
     assert(!archery_settings_adjust(NULL, 0, 1));
 }

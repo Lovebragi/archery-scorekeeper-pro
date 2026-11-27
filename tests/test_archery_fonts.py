@@ -24,14 +24,21 @@ import lvgl_font_tools as tools  # noqa: E402
 FONTS = (
     ("archery_font_16", 16),
     ("archery_font_20", 20),
+    ("archery_font_20_bold", 20),
 )
 UI_SOURCES = (
     ROOT / "main" / "archery_ui.c",
+    ROOT / "main" / "archery_challenge.c",
     ROOT / "main" / "archery_score.c",
+    ROOT / "main" / "archery_name.c",
+    ROOT / "main" / "archery_name.h",
     # 语音实验：状态与错误提示直接来自这两个文件，也必须被字库覆盖。
     ROOT / "main" / "archery_app.c",
     ROOT / "main" / "archery_wifi.c",
     ROOT / "main" / "archery_voice.c",
+)
+STORY_SOURCES = (
+    ROOT / "main" / "archery_story.c",
 )
 INVENTORY = ROOT / "assets" / "fonts" / "archery_chars.txt"
 # 一个确定不存在的码点，用来证明覆盖检查不是恒真。
@@ -50,6 +57,7 @@ class ArcheryFontTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.ui_codepoints = tools.scan_source_codepoints(UI_SOURCES)
+        cls.body_codepoints = cls.ui_codepoints | tools.scan_source_codepoints(STORY_SOURCES)
         cls.inventory = tools.load_inventory(INVENTORY)
         cls.fonts = {name: tools.parse_font_c(font_path(name)) for name, _ in FONTS}
 
@@ -61,7 +69,7 @@ class ArcheryFontTest(unittest.TestCase):
 
     def test_every_ui_codepoint_is_in_the_inventory(self) -> None:
         missing = [
-            cp for cp in sorted(self.ui_codepoints)
+            cp for cp in sorted(self.body_codepoints)
             if cp > tools.ASCII_LAST and cp not in self.inventory
         ]
         self.assertEqual(
@@ -73,8 +81,9 @@ class ArcheryFontTest(unittest.TestCase):
     def test_every_font_covers_every_ui_codepoint(self) -> None:
         for name, _size in FONTS:
             covered = tools.cmap_codepoints(self.fonts[name])
+            cps = self.ui_codepoints if name == "archery_font_20_bold" else self.body_codepoints
             missing = [
-                cp for cp in sorted(self.ui_codepoints) if cp not in covered
+                cp for cp in sorted(cps) if cp not in covered
             ]
             self.assertEqual(
                 missing, [],
@@ -150,7 +159,9 @@ class ArcheryFontTest(unittest.TestCase):
 
     def test_fonts_share_one_character_set(self) -> None:
         sets = [tools.cmap_codepoints(font) for font in self.fonts.values()]
-        self.assertEqual(sets[0], sets[1])
+        # 16px carries the story text and is a superset of the 20px faces.
+        self.assertGreaterEqual(sets[0], sets[1])
+        self.assertGreaterEqual(sets[1], sets[2])
         self.assertTrue(set(range(tools.ASCII_FIRST, tools.ASCII_LAST + 1))
                         <= sets[0])
         self.assertLessEqual(self.inventory, sets[0])

@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include "archery_fonts.h"
+#include "archery_story.h"
 #include "archery_power.h"
 #include "archery_layout.h"
 #include "archery_logbuf.h"
@@ -205,7 +206,7 @@ static void add_hint(lv_obj_t *scr, const char *text, int y) {
 // 首页/完成页的靶环图案：蓝(6-7) - 红(8-9) - 金(10) - 靶心。
 static void add_target(lv_obj_t *scr, int center_x, int center_y) {
     static const struct { int diameter; uint32_t color; } rings[] = {
-        {104, C_BLUE}, {74, C_RED}, {44, C_GOLD}, {16, C_TEXT},
+        {84, C_BLUE}, {58, C_RED}, {34, C_GOLD}, {14, C_TEXT},
     };
     for (size_t i = 0; i < sizeof(rings) / sizeof(rings[0]); i++) {
         lv_obj_t *dot = lv_obj_create(scr);
@@ -280,20 +281,20 @@ static void format_average(char *buffer, size_t size, uint16_t average_x10) {
 // ---------------------------------------------------------------------------
 
 static void render_home(lv_obj_t *scr, const archery_flow_t *flow) {
-    add_target(scr, 120, 70);
+    add_target(scr, 120, 62);
     const char *device_name = archery_name_get();
     const lv_font_t *name_font =
         strcmp(device_name, ARCHERY_NAME_DEFAULT) == 0 ? ARCHERY_FONT_TITLE : ssid_font();
-    centered_label(scr, device_name, name_font, C_TEXT, 126);
+    centered_label(scr, device_name, name_font, C_TEXT, 108);
     char range[48];
     snprintf(range, sizeof(range), "%s · %s", target_name(flow->settings.target),
              target_ring_range(flow->settings.target));
-    centered_label(scr, range, ARCHERY_FONT_BODY, C_MUTED, 156);
+    centered_label(scr, range, ARCHERY_FONT_BODY, C_MUTED, 136);
 
-    static const char *items[ARCHERY_HOME_ITEMS] = {"开始训练", "历史记录", "日期时间",
-                                                    "射箭工具", "设置", "联网"};
+    static const char *items[ARCHERY_HOME_ITEMS] = {"开始训练", "随机挑战", "历史记录",
+                                                    "日期时间", "射箭工具", "设置", "联网"};
     for (uint8_t i = 0; i < ARCHERY_HOME_ITEMS; i++) {
-        const archery_rect_t rect = {32, (int16_t)(178 + i * 20), 176, 20};
+        const archery_rect_t rect = {32, (int16_t)(160 + i * 19), 176, 19};
         const bool selected = flow->home_select == i;
         lv_obj_t *card = make_card(scr, rect, selected, false);
         lv_obj_t *label = make_label(card, items[i], ARCHERY_FONT_BODY,
@@ -319,6 +320,121 @@ static void ruler_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color
     lv_obj_set_style_border_width(line, 0, 0);
     lv_obj_set_style_radius(line, 0, 0);
     lv_obj_remove_flag(line, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+static void render_disclaimer(lv_obj_t *scr, const archery_flow_t *flow) {
+    (void)flow;
+    add_title(scr, "挑战");
+    lv_obj_t *notice = make_label(scr,
+        "本功能仅供娱乐和\n训练辅助，请在确认\n周围环境和人员安全\n后再使用本功能。\n安全第一，友谊第二，\n成绩第三。",
+        ARCHERY_FONT_BOLD, C_TEXT);
+    lv_obj_set_width(notice, 220);
+    lv_obj_set_pos(notice, 10, 42);
+    lv_obj_set_style_text_align(notice, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(notice, LV_LABEL_LONG_WRAP);
+
+    const archery_rect_t rect = {28, 198, 184, 38};
+    lv_obj_t *card = make_card(scr, rect, true, false);
+    lv_obj_t *label = make_label(card, "我已确认，开始挑战", ARCHERY_FONT_BODY, C_GOLD);
+    lv_obj_center(label);
+    add_hint(scr, "确定 继续 · 长按 返回", 270);
+}
+
+static void render_challenge(lv_obj_t *scr, const archery_flow_t *flow) {
+    const archery_challenge_t *c = &flow->challenge;
+    add_title(scr, c->generated && archery_challenge_main_is_hidden(c->main_id)
+                       ? "秘境挑战" : "挑战");
+    if (!c->generated) {
+        const archery_rect_t rect = {52, 116, 136, 42};
+        lv_obj_t *card = make_card(scr, rect, true, false);
+        lv_obj_t *label = make_label(card, "生成挑战", ARCHERY_FONT_BODY, C_GOLD);
+        lv_obj_center(label);
+        add_hint(scr, "确定 生成 · 长按 返回", 270);
+        return;
+    }
+    lv_obj_t *main = make_label(scr, archery_challenge_main_text(c->main_id),
+                                ARCHERY_FONT_BODY, C_TEXT);
+    lv_obj_set_width(main, 216);
+    lv_obj_set_pos(main, 12, 46);
+    lv_obj_set_style_text_align(main, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(main, LV_LABEL_LONG_WRAP);
+
+    char line[64];
+    snprintf(line, sizeof(line), "共 %u 箭", (unsigned)c->arrows);
+    centered_label(scr, line, ARCHERY_FONT_BODY, C_MUTED, 88);
+
+    if (c->mod_count > 0u) {
+        centered_label(scr, "附加条件", ARCHERY_FONT_BODY, C_GOLD, 108);
+        for (uint8_t i = 0; i < c->mod_count; i++) {
+            snprintf(line, sizeof(line), "· %s",
+                     archery_challenge_mod_text(c->mod_ids[i]));
+            lv_obj_t *mod = make_label(scr, line, ARCHERY_FONT_BODY, C_TEXT);
+            lv_obj_set_width(mod, 216);
+            lv_obj_set_pos(mod, 12, 126 + (int)i * 20);
+            lv_obj_set_style_text_align(mod, LV_TEXT_ALIGN_CENTER, 0);
+            lv_label_set_long_mode(mod, LV_LABEL_LONG_WRAP);
+        }
+    } else {
+        centered_label(scr, "无附加条件", ARCHERY_FONT_BODY, C_MUTED, 126);
+    }
+
+    char stars1[64];
+    char stars2[64];
+    size_t p1 = 0;
+    size_t p2 = 0;
+    for (uint8_t i = 0; i < c->difficulty; i++) {
+        const char *star = "★";
+        const size_t n = strlen(star);
+        if (i < 10u) {
+            if (p1 + n < sizeof(stars1)) {
+                memcpy(&stars1[p1], star, n);
+                p1 += n;
+            }
+        } else {
+            if (p2 + n < sizeof(stars2)) {
+                memcpy(&stars2[p2], star, n);
+                p2 += n;
+            }
+        }
+    }
+    stars1[p1] = '\0';
+    stars2[p2] = '\0';
+    centered_label(scr, stars1, ARCHERY_FONT_BODY, C_GOLD, 170);
+    if (p2 > 0u) {
+        centered_label(scr, stars2, ARCHERY_FONT_BODY, C_GOLD, 190);
+    }
+    snprintf(line, sizeof(line), "难度 %u", (unsigned)c->difficulty);
+    centered_label(scr, line, ARCHERY_FONT_BODY, C_MUTED, 212);
+
+    const bool success_selected = flow->challenge_choice == 0u;
+    const archery_rect_t success_rect = {16, 234, 100, 24};
+    lv_obj_t *success_card = make_card(scr, success_rect, success_selected, false);
+    lv_obj_t *success_label = make_label(success_card, "挑战成功", ARCHERY_FONT_BODY,
+                                         success_selected ? C_GOLD : C_TEXT);
+    lv_obj_center(success_label);
+    const archery_rect_t fail_rect = {124, 234, 100, 24};
+    lv_obj_t *fail_card = make_card(scr, fail_rect, !success_selected, false);
+    lv_obj_t *fail_label = make_label(fail_card, "挑战失败", ARCHERY_FONT_BODY,
+                                      !success_selected ? C_GOLD : C_TEXT);
+    lv_obj_center(fail_label);
+
+    add_hint(scr, "上/下 选择 · 确定 提交 · 长按 返回", 270);
+}
+
+static void render_story(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, flow->story_hidden
+                       ? "秘境"
+                       : archery_story_normal_title(flow->story_index));
+    const char *text = flow->story_hidden
+                           ? archery_story_hidden(flow->story_hidden_main, flow->story_hidden_set)
+                           : archery_story_normal(flow->story_index);
+    lv_obj_t *label = make_label(scr, text, ARCHERY_FONT_TITLE, C_TEXT);
+    lv_obj_set_width(label, 216);
+    lv_obj_set_pos(label, 12, 74);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_line_space(label, 6, 0);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+    add_hint(scr, "确定 继续", 284);
 }
 
 static void render_tools(lv_obj_t *scr, const archery_flow_t *flow) {
@@ -450,7 +566,7 @@ static const char *const manual_pages[] = {
     "四、语音录靶\n先在设置打开语音录靶\n并在配网页填写 API Key\n录入页按住上键说话\n松手后识别，例如：\n十环三、九环二、脱靶一\n十环两个、八环四个\n剩下都是九环\n识别和修正都在设备完成",
     "五、每组计时\n设置→每组计时\n关、20、30、40 秒每支\n开始后先准备，再倒计时\n最后十秒有语音\n\n六、历史记录\n保存最近 300 次训练\n可按全部、今天、最近七天筛选\n手机配网页可导出 CSV",
     "七、射箭工具\n主页→射箭工具\n包含瞄具刻度、刻度估算、\n节拍器、测距、参考尺\n\n瞄具刻度：记录 18/30/50/70 米\n和两个自定义距离\n蓝框有效，红框数据不足\n\n刻度估算：线性或三点插值\n结果仅供参考",
-    "节拍器\n可设置 BPM、重音、预备拍、\n自动停止和预设\n提示音：click、男声、小林、\n小章、豆包、猫叫\n\n八、测距参数\n靶面、眼屏距离、\n眼屏距离校准、靶面倾角、\n开始测距",
+    "节拍器\n可设置 BPM、重音、预备拍、\n自动停止和预设\n提示音：click、男声、小林、\n小章、豆包\n\n八、测距参数\n靶面、眼屏距离、\n眼屏距离校准、靶面倾角、\n开始测距",
     "测距靶面\n40半 20cm  40全 40cm\n80半 40cm（6～10环）\n80六环 48cm\n80全 80cm  122全 122cm\n\n刻度页\n下面黄线对靶下沿\n上面黄线卡靶上沿\n上/下键每次移动游标 1 像素\n长按连续移动",
     "测距计算\n距离按两条黄线之间的净空\n不包含线宽\n显示 0.1 米\n\n眼屏距离校准\n建议使用 80 全靶\n在 18 米距离校准\n调整游标对准靶子上沿\n保存后反算眼屏距离\n换靶面不会清除校准",
     "九、靶面倾角\n设置范围 0～15 度\n0 度：靶面垂直地面\n15 度：上沿向上倾斜\n设备会按投影高度修正\n\n十、参考尺\n左侧英寸 in\n右侧毫米 mm\n0 点在屏幕顶部\n上/下键整体移动",
@@ -562,7 +678,7 @@ static void render_metronome(lv_obj_t *scr, const archery_flow_t *flow) {
             break;
         }
         default:
-            snprintf(value, sizeof(value), "%s", flow->metro_count_voice == 1u ? "男声" : (flow->metro_count_voice == 2u ? "豆包" : (flow->metro_count_voice == 3u ? "小林" : (flow->metro_count_voice == 4u ? "小章" : (flow->metro_count_voice == 5u ? "猫叫" : "click")))));
+            snprintf(value, sizeof(value), "%s", flow->metro_count_voice == 1u ? "男声" : (flow->metro_count_voice == 2u ? "豆包" : (flow->metro_count_voice == 3u ? "小林" : (flow->metro_count_voice == 4u ? "小章" : ("click")))));
             break;
         }
         lv_obj_t *val = make_label(card, value,
@@ -1367,8 +1483,8 @@ static void render_settings(lv_obj_t *scr, const archery_flow_t *flow) {
             if (flow->settings.timer_seconds == 0u) snprintf(value, sizeof(value), "关");
             else snprintf(value, sizeof(value), "%u 秒/支", (unsigned)flow->settings.timer_seconds);
         } else if (row == 3) {
-            static const char *const voicing[] = {"关", "系统", "小豆", "豆包", "男声", "小林", "小章", "猫叫"};
-            snprintf(value, sizeof(value), "%s", voicing[flow->settings.countdown_voice <= 7u ? flow->settings.countdown_voice : 0u]);
+            static const char *const voicing[] = {"关", "豆包", "", "小林", "小章"};
+            snprintf(value, sizeof(value), "%s", voicing[flow->settings.countdown_voice <= 4u ? flow->settings.countdown_voice : 0u]);
         } else if (row == 4) {
             snprintf(value, sizeof(value), "%s", flow->settings.voice_enabled ? "开" : "关");
         } else if (row == 5) {
@@ -1758,6 +1874,9 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_MANUAL: render_manual(scr, flow); break;
     case ARCHERY_PAGE_SIGHT: render_sight(scr, flow); break;
     case ARCHERY_PAGE_TOOLS: render_tools(scr, flow); break;
+    case ARCHERY_PAGE_CHALLENGE: render_challenge(scr, flow); break;
+    case ARCHERY_PAGE_DISCLAIMER: render_disclaimer(scr, flow); break;
+    case ARCHERY_PAGE_STORY: render_story(scr, flow); break;
     case ARCHERY_PAGE_RULER: render_ruler(scr, flow); break;
     case ARCHERY_PAGE_SIGHT_CALC: render_sight_calc(scr, flow); break;
     case ARCHERY_PAGE_METRONOME: render_metronome(scr, flow); break;

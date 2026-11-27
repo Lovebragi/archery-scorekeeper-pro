@@ -3,9 +3,73 @@ if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/assets/xixige_22k.pcm")
     list(APPEND ARCHERY_MUSIC_EMBED_FILES "assets/xixige_22k.pcm")
 endif()
 
+set(ARCHERY_CHALLENGE_VOICE_FILES
+    "../assets/voice/challenge/main_32.pcm"
+    "../assets/voice/challenge/main_31.pcm"
+    "../assets/voice/challenge/main_30.pcm"
+    "../assets/voice/challenge/diff_12.pcm"
+    "../assets/voice/challenge/diff_15.pcm"
+    "../assets/voice/challenge/diff_14.pcm"
+    "../assets/voice/challenge/diff_13.pcm"
+    "../assets/voice/challenge/diff_11.pcm"
+    "../assets/voice/challenge/main_29.pcm"
+    "../assets/voice/challenge/hidden_cue.pcm"
+    "../assets/voice/challenge/hidden_intro.pcm"
+    "../assets/voice/challenge/main_00.pcm"
+    "../assets/voice/challenge/main_01.pcm"
+    "../assets/voice/challenge/main_02.pcm"
+    "../assets/voice/challenge/main_03.pcm"
+    "../assets/voice/challenge/main_04.pcm"
+    "../assets/voice/challenge/main_05.pcm"
+    "../assets/voice/challenge/main_06.pcm"
+    "../assets/voice/challenge/main_07.pcm"
+    "../assets/voice/challenge/main_08.pcm"
+    "../assets/voice/challenge/main_09.pcm"
+    "../assets/voice/challenge/main_10.pcm"
+    "../assets/voice/challenge/main_11.pcm"
+    "../assets/voice/challenge/main_12.pcm"
+    "../assets/voice/challenge/main_13.pcm"
+    "../assets/voice/challenge/main_14.pcm"
+    "../assets/voice/challenge/main_15.pcm"
+    "../assets/voice/challenge/main_16.pcm"
+    "../assets/voice/challenge/main_17.pcm"
+    "../assets/voice/challenge/main_18.pcm"
+    "../assets/voice/challenge/main_19.pcm"
+    "../assets/voice/challenge/main_20.pcm"
+    "../assets/voice/challenge/main_21.pcm"
+    "../assets/voice/challenge/main_22.pcm"
+    "../assets/voice/challenge/main_23.pcm"
+    "../assets/voice/challenge/main_24.pcm"
+    "../assets/voice/challenge/main_25.pcm"
+    "../assets/voice/challenge/main_26.pcm"
+    "../assets/voice/challenge/main_27.pcm"
+    "../assets/voice/challenge/main_28.pcm"
+    "../assets/voice/challenge/mod_01.pcm"
+    "../assets/voice/challenge/mod_02.pcm"
+    "../assets/voice/challenge/mod_03.pcm"
+    "../assets/voice/challenge/mod_04.pcm"
+    "../assets/voice/challenge/mod_05.pcm"
+    "../assets/voice/challenge/mod_08.pcm"
+    "../assets/voice/challenge/mod_10.pcm"
+    "../assets/voice/challenge/mod_11.pcm"
+    "../assets/voice/challenge/diff_01.pcm"
+    "../assets/voice/challenge/diff_02.pcm"
+    "../assets/voice/challenge/diff_03.pcm"
+    "../assets/voice/challenge/diff_04.pcm"
+    "../assets/voice/challenge/diff_05.pcm"
+    "../assets/voice/challenge/diff_06.pcm"
+    "../assets/voice/challenge/diff_07.pcm"
+    "../assets/voice/challenge/diff_08.pcm"
+    "../assets/voice/challenge/diff_09.pcm"
+    "../assets/voice/challenge/diff_10.pcm"
+)
+
 idf_component_register(
     SRCS "main.c"
          "archery_app.c"
+         "archery_story.c"
+         "archery_challenge.c"
+         "archery_challenge_voice.c"
          "archery_clock.c"
          "archery_flow.c"
          "archery_power.c"
@@ -40,7 +104,7 @@ idf_component_register(
          "demo_ble.c"
          "demo_low_power.c"
     INCLUDE_DIRS "."
-    EMBED_FILES ${ARCHERY_MUSIC_EMBED_FILES}
+    EMBED_FILES ${ARCHERY_MUSIC_EMBED_FILES} ${ARCHERY_CHALLENGE_VOICE_FILES}
     REQUIRES bsp bt esp_event esp_hw_support esp_http_server esp_netif esp_timer esp-tls esp_wifi lwip mbedtls nvs_flash
 )
 
@@ -53,4 +117,5 @@ endif()
 target_sources(${COMPONENT_LIB} PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/../assets/fonts/archery_font_16.c"
     "${CMAKE_CURRENT_LIST_DIR}/../assets/fonts/archery_font_20.c"
+    "${CMAKE_CURRENT_LIST_DIR}/../assets/fonts/archery_font_20_bold.c"
 )

@@ -243,7 +243,7 @@ static archery_act_t handle_beta(archery_flow_t *flow, archery_key_t key) {
 #endif
         return ARCHERY_ACT_SETTINGS_CHANGED;
     case ARCHERY_KEY_OK_LONG:
-        flow->settings_row = 11;
+        flow->settings_row = 12;
         flow->page = ARCHERY_PAGE_SETTINGS;
         return ARCHERY_ACT_SETTINGS_SAVE;
     }
@@ -254,6 +254,44 @@ static archery_act_t handle_auto_check(archery_flow_t *flow, archery_key_t key) 
     if (!flow->auto_check_done) return ARCHERY_ACT_NONE;
     if (key == ARCHERY_KEY_OK || key == ARCHERY_KEY_OK_LONG) {
         archery_flow_enter_setup(flow);
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_disclaimer(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_OK) {
+        flow->story_hidden = false;
+        flow->page = ARCHERY_PAGE_STORY;
+        return ARCHERY_ACT_STORY_START;
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_HOME;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_story(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_OK || key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_CHALLENGE;
+        return ARCHERY_ACT_STORY_DONE;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_challenge(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_HOME;
+        return ARCHERY_ACT_NONE;
+    }
+    if (!flow->challenge.generated) {
+        if (key == ARCHERY_KEY_OK) return ARCHERY_ACT_CHALLENGE_GENERATE;
+        return ARCHERY_ACT_NONE;
+    }
+    if (key == ARCHERY_KEY_UP || key == ARCHERY_KEY_DOWN) {
+        flow->challenge_choice = flow->challenge_choice ? 0u : 1u;
+        return ARCHERY_ACT_NONE;
+    }
+    if (key == ARCHERY_KEY_OK) {
+        return ARCHERY_ACT_CHALLENGE_RESULT;
     }
     return ARCHERY_ACT_NONE;
 }
@@ -279,16 +317,21 @@ static archery_act_t handle_home(archery_flow_t *flow, archery_key_t key) {
             archery_flow_clear_runtime_entries(flow);
             archery_flow_enter_setup(flow);
         } else if (flow->home_select == 1) {
+            archery_challenge_init(&flow->challenge);
+            flow->challenge_choice = 0;
+            flow->story_hidden = false;
+            flow->page = ARCHERY_PAGE_DISCLAIMER;
+        } else if (flow->home_select == 2) {
             flow->history_cursor = 0;
             flow->page = ARCHERY_PAGE_HISTORY;
-        } else if (flow->home_select == 2) {
+        } else if (flow->home_select == 3) {
             archery_seconds_to_datetime(flow->clock_now, &flow->clock_fields);
             flow->clock_row = 0;
             flow->page = ARCHERY_PAGE_CLOCK;
-        } else if (flow->home_select == 3) {
+        } else if (flow->home_select == 4) {
             flow->tools_row = 0;
             flow->page = ARCHERY_PAGE_TOOLS;
-        } else if (flow->home_select == 4) {
+        } else if (flow->home_select == 5) {
             flow->settings_row = 0;
     flow->manual_scroll = 0;
     flow->manual_page = 0;
@@ -614,7 +657,7 @@ static archery_act_t handle_manual(archery_flow_t *flow, archery_key_t key) {
         if (flow->manual_page < 12u) flow->manual_page++;
     } else if (key == ARCHERY_KEY_OK_LONG) {
         flow->page = ARCHERY_PAGE_SETTINGS;
-        flow->settings_row = 12;
+        flow->settings_row = 13;
     }
     return ARCHERY_ACT_NONE;
 }
@@ -682,7 +725,7 @@ static archery_act_t handle_metronome(archery_flow_t *flow, archery_key_t key) {
         }
         case 7: {
             const uint8_t before = flow->metro_count_voice;
-            flow->metro_count_voice = (uint8_t)((flow->metro_count_voice + (delta > 0 ? 1 : 5)) % 6u);
+            flow->metro_count_voice = (uint8_t)((flow->metro_count_voice + (delta > 0 ? 1 : 4)) % 5u);
             if (flow->metro_count_voice != before) return ARCHERY_ACT_SETTINGS_CHANGED;
             break;
         }
@@ -1300,6 +1343,9 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_RANGE_CONFIG: return handle_range_config(flow, key);
     case ARCHERY_PAGE_RANGE_VIEW: return handle_range_view(flow, key);
     case ARCHERY_PAGE_RANGE_CAL: return handle_range_cal(flow, key);
+    case ARCHERY_PAGE_CHALLENGE: return handle_challenge(flow, key);
+    case ARCHERY_PAGE_STORY: return handle_story(flow, key);
+    case ARCHERY_PAGE_DISCLAIMER: return handle_disclaimer(flow, key);
     }
     return ARCHERY_ACT_NONE;
 }

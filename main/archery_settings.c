@@ -101,6 +101,18 @@ static int off_index(uint16_t value) {
     return -1;
 }
 
+static uint8_t migrate_countdown_voice(uint8_t voice) {
+    switch (voice) {
+    case 0u: return 0u;  // 关
+    case 1u: return 1u;  // 豆包
+    case 3u: return 3u;  // 小林
+    case 4u: return 4u;  // 小章
+    case 5u: return 3u;  // 旧小林
+    case 6u: return 4u;  // 旧小章
+    default: return 1u;  // 系统/小豆/男声/猫叫 → 豆包
+    }
+}
+
 bool archery_settings_valid(const archery_settings_t *settings) {
     if (!settings) return false;
     return archery_target_valid(settings->target) &&
@@ -110,7 +122,7 @@ bool archery_settings_valid(const archery_settings_t *settings) {
            off_index(settings->off_seconds) >= 0 &&
            settings->record_x <= 1u && settings->voice_enabled <= 1u &&
            settings->beep_volume < 6u && settings->wifi_save <= 1u && settings->roll_entry <= 1u && settings->auto_mode <= 1u && settings->auto_reconnect <= 1u &&
-           settings->countdown_voice <= 7u &&
+           (settings->countdown_voice <= 1u || settings->countdown_voice == 3u || settings->countdown_voice == 4u) &&
            (settings->timer_seconds == 0u || settings->timer_seconds == 20u ||
             settings->timer_seconds == 30u || settings->timer_seconds == 40u);
 }
@@ -150,7 +162,11 @@ bool archery_settings_adjust(archery_settings_t *settings, uint8_t row, int delt
         return true;
     }
     if (row == 3) {
-        settings->countdown_voice = (uint8_t)((settings->countdown_voice + 1u) % 8u);
+        static const uint8_t order[] = {0u, 1u, 3u, 4u};
+        uint8_t at = 0;
+        for (uint8_t i = 0; i < sizeof(order); i++) if (order[i] == settings->countdown_voice) at = i;
+        at = (uint8_t)((at + 1u) % (uint8_t)sizeof(order));
+        settings->countdown_voice = order[at];
         return true;
     }
     if (row == 4) {
@@ -247,6 +263,8 @@ static bool decode_v1(archery_settings_t *settings, const uint8_t *buffer) {
     decoded.timer_seconds = ARCHERY_SETTINGS_DEFAULT_TIMER;
     decoded.countdown_voice = ARCHERY_SETTINGS_DEFAULT_COUNTDOWN_VOICE;
     decoded.roll_entry = ARCHERY_SETTINGS_DEFAULT_ROLL_ENTRY;
+    // 旧版本 6=小章、7=猫叫；音色删除后迁移到默认音色。
+    decoded.countdown_voice = migrate_countdown_voice(decoded.countdown_voice);
     if (!archery_settings_valid(&decoded)) return false;
     *settings = decoded;
     return true;
@@ -269,6 +287,8 @@ static bool decode_v2(archery_settings_t *settings, const uint8_t *buffer) {
     decoded.timer_seconds = ARCHERY_SETTINGS_DEFAULT_TIMER;
     decoded.countdown_voice = ARCHERY_SETTINGS_DEFAULT_COUNTDOWN_VOICE;
     decoded.roll_entry = ARCHERY_SETTINGS_DEFAULT_ROLL_ENTRY;
+    // 旧版本 6=小章、7=猫叫；音色删除后迁移到默认音色。
+    decoded.countdown_voice = migrate_countdown_voice(decoded.countdown_voice);
     if (!archery_settings_valid(&decoded)) return false;
     *settings = decoded;
     return true;
@@ -416,6 +436,8 @@ bool archery_settings_decode(archery_settings_t *settings,
         decoded.timer_seconds = ARCHERY_SETTINGS_DEFAULT_TIMER;
         decoded.countdown_voice = ARCHERY_SETTINGS_DEFAULT_COUNTDOWN_VOICE;
     }
+    // 旧版本 6=小章、7=猫叫；音色删除后迁移到默认音色。
+    decoded.countdown_voice = migrate_countdown_voice(decoded.countdown_voice);
     if (!archery_settings_valid(&decoded)) return false;
     *settings = decoded;
     return true;
