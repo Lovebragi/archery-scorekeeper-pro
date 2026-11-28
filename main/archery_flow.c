@@ -1,6 +1,7 @@
 // main/archery_flow.c —— 页面/按键状态机实现（无 LVGL、无 ESP-IDF 依赖）。
 #include "archery_flow.h"
 #include "archery_logbuf.h"
+#include "archery_rogue.h"
 
 #include <string.h>
 
@@ -279,10 +280,82 @@ static void chapter_move(archery_flow_t *flow, int delta) {
 static archery_act_t handle_disclaimer(archery_flow_t *flow, archery_key_t key) {
     if (key == ARCHERY_KEY_OK) {
         flow->story_hidden = false;
-        flow->chapter_select = 0;
-        flow->page = ARCHERY_PAGE_CHAPTERS;
+        flow->mode_select = 0;
+        flow->page = ARCHERY_PAGE_MODES;
     } else if (key == ARCHERY_KEY_OK_LONG) {
         flow->page = ARCHERY_PAGE_HOME;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_modes(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP) {
+        flow->mode_select = flow->mode_select == 0u ? 3u : (uint8_t)(flow->mode_select - 1u);
+    } else if (key == ARCHERY_KEY_DOWN) {
+        flow->mode_select = (uint8_t)((flow->mode_select + 1u) % 4u);
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_HOME;
+    } else if (key == ARCHERY_KEY_OK) {
+        if (flow->mode_select == 0u) {
+            flow->rogue_active = false;
+            flow->chapter_select = 0;
+            flow->page = ARCHERY_PAGE_CHAPTERS;
+        } else if (flow->mode_select == 1u) {
+            flow->rogue_active = true;
+            return ARCHERY_ACT_ROGUE_START;
+        } else if (flow->mode_select == 2u) {
+            flow->rogue_filter_row = 0;
+            flow->rogue_filter_scroll = 0;
+            flow->page = ARCHERY_PAGE_ROGUE_FILTER;
+        } else {
+            flow->reset_confirm_yes = false;
+            flow->page = ARCHERY_PAGE_RESET_CONFIRM;
+        }
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_reset_confirm(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP || key == ARCHERY_KEY_DOWN) {
+        flow->reset_confirm_yes = flow->reset_confirm_yes ? false : true;
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_MODES;
+    } else if (key == ARCHERY_KEY_OK) {
+        const bool yes = flow->reset_confirm_yes;
+        flow->page = ARCHERY_PAGE_MODES;
+        if (yes) return ARCHERY_ACT_STORY_RESET;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_rogue_filter(archery_flow_t *flow, archery_key_t key) {
+    const uint8_t start_row = ARCHERY_ROGUE_MAIN_COUNT + ARCHERY_ROGUE_MOD_COUNT;
+    if (key == ARCHERY_KEY_UP) {
+        flow->rogue_filter_row = flow->rogue_filter_row == 0u
+                                     ? start_row
+                                     : (uint8_t)(flow->rogue_filter_row - 1u);
+    } else if (key == ARCHERY_KEY_DOWN) {
+        flow->rogue_filter_row = (uint8_t)((flow->rogue_filter_row + 1u) % (start_row + 1u));
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_MODES;
+        return ARCHERY_ACT_NONE;
+    } else if (key == ARCHERY_KEY_OK) {
+        if (flow->rogue_filter_row == start_row) {
+            flow->rogue_active = true;
+            return ARCHERY_ACT_ROGUE_START;
+        }
+        if (flow->rogue_filter_row < ARCHERY_ROGUE_MAIN_COUNT) {
+            flow->rogue_block_main ^= (uint32_t)(1u << flow->rogue_filter_row);
+        } else {
+            const uint8_t bit = (uint8_t)(flow->rogue_filter_row - ARCHERY_ROGUE_MAIN_COUNT);
+            flow->rogue_block_mod ^= (uint8_t)(1u << bit);
+        }
+        return ARCHERY_ACT_ROGUE_FILTER_CHANGED;
+    }
+    if (flow->rogue_filter_row < flow->rogue_filter_scroll) {
+        flow->rogue_filter_scroll = flow->rogue_filter_row;
+    } else if (flow->rogue_filter_row >= flow->rogue_filter_scroll + 4u) {
+        flow->rogue_filter_scroll = (uint8_t)(flow->rogue_filter_row - 3u);
     }
     return ARCHERY_ACT_NONE;
 }
@@ -296,6 +369,7 @@ static archery_act_t handle_chapters(archery_flow_t *flow, archery_key_t key) {
         flow->page = ARCHERY_PAGE_HOME;
     } else if (key == ARCHERY_KEY_OK) {
         if (!chapter_available(flow, flow->chapter_select)) return ARCHERY_ACT_NONE;
+        flow->rogue_active = false;
         flow->story_set = flow->chapter_select;
         flow->story_index = (uint8_t)(flow->story_set * 12u);
         flow->story_hidden = false;
@@ -1406,6 +1480,9 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_DISCLAIMER: return handle_disclaimer(flow, key);
     case ARCHERY_PAGE_CHAPTERS: return handle_chapters(flow, key);
     case ARCHERY_PAGE_ENDING: return handle_ending(flow, key);
+    case ARCHERY_PAGE_MODES: return handle_modes(flow, key);
+    case ARCHERY_PAGE_ROGUE_FILTER: return handle_rogue_filter(flow, key);
+    case ARCHERY_PAGE_RESET_CONFIRM: return handle_reset_confirm(flow, key);
     }
     return ARCHERY_ACT_NONE;
 }

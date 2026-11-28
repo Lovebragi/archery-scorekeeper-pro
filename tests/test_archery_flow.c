@@ -522,6 +522,8 @@ static void test_challenge_page(void) {
     press(&flow, ARCHERY_KEY_OK);
     assert(flow.page == ARCHERY_PAGE_DISCLAIMER);
     press(&flow, ARCHERY_KEY_OK);
+    assert(flow.page == ARCHERY_PAGE_MODES);
+    press(&flow, ARCHERY_KEY_OK);
     assert(flow.page == ARCHERY_PAGE_CHAPTERS);
     press(&flow, ARCHERY_KEY_OK);
     assert(flow.page == ARCHERY_PAGE_STORY);

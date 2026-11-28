@@ -12,6 +12,7 @@
 
 #include "archery_fonts.h"
 #include "archery_story.h"
+#include "archery_rogue.h"
 #include "archery_power.h"
 #include "archery_layout.h"
 #include "archery_logbuf.h"
@@ -320,6 +321,79 @@ static void ruler_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color
     lv_obj_set_style_border_width(line, 0, 0);
     lv_obj_set_style_radius(line, 0, 0);
     lv_obj_remove_flag(line, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+static void render_modes(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "选择模式");
+    static const char *names[] = {"故事模式", "肉鸽模式", "定制肉鸽", "重置故事"};
+    for (uint8_t row = 0; row < 4u; row++) {
+        const bool selected = row == flow->mode_select;
+        const archery_rect_t rect = {36, (int16_t)(70 + row * 44), 168, 38};
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        lv_obj_t *label = make_label(card, names[row], ARCHERY_FONT_BODY,
+                                     selected ? C_GOLD : C_TEXT);
+        lv_obj_center(label);
+    }
+    add_hint(scr, "上/下 选择 · 确定 进入 · 长按 返回", 292);
+}
+
+static void render_rogue_filter(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "定制肉鸽");
+    const uint8_t start_row = ARCHERY_ROGUE_MAIN_COUNT + ARCHERY_ROGUE_MOD_COUNT;
+    for (uint8_t visible = 0; visible < 4u; visible++) {
+        const uint8_t row = (uint8_t)(flow->rogue_filter_scroll + visible);
+        if (row > start_row) break;
+        const bool selected = row == flow->rogue_filter_row;
+        const archery_rect_t rect = {10, (int16_t)(48 + visible * 52), 220, 48};
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        const char *text;
+        bool blocked = false;
+        if (row == start_row) {
+            text = "开始肉鸽";
+        } else if (row < ARCHERY_ROGUE_MAIN_COUNT) {
+            blocked = (flow->rogue_block_main & (uint32_t)(1u << row)) != 0u;
+            text = archery_challenge_main_text(archery_rogue_main_id(row));
+        } else {
+            const uint8_t mod = (uint8_t)(row - ARCHERY_ROGUE_MAIN_COUNT);
+            blocked = (flow->rogue_block_mod & (uint8_t)(1u << mod)) != 0u;
+            text = archery_challenge_mod_text(mod);
+        }
+        char line[96];
+        if (row == start_row) snprintf(line, sizeof(line), "%s", text);
+        else snprintf(line, sizeof(line), "%s%s", blocked ? "× " : "· ", text);
+        lv_obj_t *label = make_label(card, line, ARCHERY_FONT_BODY,
+                                     row == start_row ? C_GOLD
+                                     : (blocked ? C_MUTED : (selected ? C_GOLD : C_TEXT)));
+        lv_obj_set_width(label, 204);
+        lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+        lv_obj_center(label);
+    }
+    add_hint(scr, "上/下 选择 · 确定 屏蔽/开启 · 长按 返回", 292);
+}
+
+static void render_reset_confirm(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "重置故事");
+    lv_obj_t *body = make_label(scr,
+        "确认清除故事模式的章节解锁进度？\n故事将从山野第一章重新开始。",
+        ARCHERY_FONT_BODY, C_TEXT);
+    lv_obj_set_width(body, 216);
+    lv_obj_set_pos(body, 12, 82);
+    lv_obj_set_style_text_align(body, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
+
+    const bool yes = flow->reset_confirm_yes;
+    const archery_rect_t cancel_rect = {16, 220, 100, 34};
+    lv_obj_t *cancel_card = make_card(scr, cancel_rect, !yes, false);
+    lv_obj_t *cancel_label = make_label(cancel_card, "取消", ARCHERY_FONT_BODY,
+                                        !yes ? C_GOLD : C_TEXT);
+    lv_obj_center(cancel_label);
+    const archery_rect_t ok_rect = {124, 220, 100, 34};
+    lv_obj_t *ok_card = make_card(scr, ok_rect, yes, false);
+    lv_obj_t *ok_label = make_label(ok_card, "确认重置", ARCHERY_FONT_BODY,
+                                    yes ? C_GOLD : C_TEXT);
+    lv_obj_center(ok_label);
+    add_hint(scr, "上/下 选择 · 确定 · 长按 取消", 292);
 }
 
 static bool chapter_row_available(const archery_flow_t *flow, uint8_t row) {
@@ -1925,6 +1999,9 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_CHALLENGE: render_challenge(scr, flow); break;
     case ARCHERY_PAGE_DISCLAIMER: render_disclaimer(scr, flow); break;
     case ARCHERY_PAGE_CHAPTERS: render_chapters(scr, flow); break;
+    case ARCHERY_PAGE_MODES: render_modes(scr, flow); break;
+    case ARCHERY_PAGE_RESET_CONFIRM: render_reset_confirm(scr, flow); break;
+    case ARCHERY_PAGE_ROGUE_FILTER: render_rogue_filter(scr, flow); break;
     case ARCHERY_PAGE_ENDING: render_ending(scr, flow); break;
     case ARCHERY_PAGE_STORY: render_story(scr, flow); break;
     case ARCHERY_PAGE_RULER: render_ruler(scr, flow); break;

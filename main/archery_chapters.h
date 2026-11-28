@@ -15,6 +15,7 @@ void archery_chapters_init(void);
 uint8_t archery_chapters_mask(void);
 bool archery_chapters_available(uint8_t set);
 void archery_chapters_complete(uint8_t set);
+void archery_chapters_reset(void);
 
 #ifdef __cplusplus
 }

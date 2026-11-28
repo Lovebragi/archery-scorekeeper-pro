@@ -45,3 +45,12 @@ void archery_chapters_complete(uint8_t set) {
     }
     nvs_close(handle);
 }
+
+void archery_chapters_reset(void) {
+    s_mask = 0u;
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return;
+    (void)nvs_erase_key(handle, NVS_KEY);
+    (void)nvs_commit(handle);
+    nvs_close(handle);
+}

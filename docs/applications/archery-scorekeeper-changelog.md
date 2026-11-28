@@ -8,6 +8,31 @@ Release history for the archery scorekeeper application. The repository-wide
 [changelog](../CHANGELOG.md) tracks the AI Passport project itself; this file
 follows the application's firmware versions.
 
+## 1.7.1 — 2026-11-28
+
+### Added
+
+- Mode selection with Story, Roguelike and Custom Roguelike.
+- Story chapter selection with per-chapter difficulty ranges; each chapter draws from its own low-to-high band.
+- Chapter endings and a final "The Way" chapter after the five story paths are completed.
+- One-star "6 arrows all on target" and two-star "6 arrows total 42 or more" challenges.
+- Custom Roguelike filters for normal challenges and modifiers, stored separately from Story progress.
+- Reset Story confirmation page.
+
+### Changed
+
+- Roguelike draws a random chapter from the first five stories with no limit and no ending.
+- The first challenge of each chapter is always normal; hidden challenges can appear from the second challenge onward.
+- Challenge failure is now labeled "Change Challenge".
+- Up/Down navigation on mode, chapter, challenge and ending pages triggers on press instead of release.
+- Custom Roguelike rows are taller and wrap long challenge names.
+
+### Fixed
+
+- Story progress is no longer reset by hidden challenges.
+- Hidden challenge ID range no longer captures the added normal challenge.
+- Chapter difficulty ranges are enforced when generating normal challenges.
+
 ## 1.7.0 — 2026-11-28
 
 ### Added

@@ -46,6 +46,9 @@ typedef enum {
     ARCHERY_PAGE_DISCLAIMER,
     ARCHERY_PAGE_CHAPTERS,
     ARCHERY_PAGE_ENDING,
+    ARCHERY_PAGE_MODES,
+    ARCHERY_PAGE_ROGUE_FILTER,
+    ARCHERY_PAGE_RESET_CONFIRM,
 } archery_page_t;
 
 // 主页入口数：开始训练 / 历史记录 / 设置 / 联网。
@@ -110,6 +113,9 @@ typedef enum {
     ARCHERY_ACT_STORY_DONE,
     ARCHERY_ACT_ENDING_CONTINUE,
     ARCHERY_ACT_ENDING_HOME,
+    ARCHERY_ACT_ROGUE_START,
+    ARCHERY_ACT_ROGUE_FILTER_CHANGED,
+    ARCHERY_ACT_STORY_RESET,
     ARCHERY_ACT_VOICE_VERIFY,        // 离开联网页：停止配网热点
     ARCHERY_ACT_WIFI_CONNECT_PASSWORD,  // 用设备上输入的密码连接（flow->wifi_password）
     ARCHERY_ACT_TIMER_START,            // 进入计时页：上层启动 1 秒 + 10 秒准备 + 射击倒计时
@@ -169,6 +175,13 @@ typedef struct {
     uint8_t chapter_select;    // 章节选择 0..5
     uint8_t ending_select;     // 0 = 继续挑战, 1 = 归隐田园
     uint8_t story_set;         // 当前故事套 0..5
+    uint8_t mode_select;       // 0 = 故事, 1 = 肉鸽, 2 = 定制肉鸽
+    bool rogue_active;
+    uint32_t rogue_block_main;
+    uint8_t rogue_block_mod;
+    uint8_t rogue_filter_row;
+    uint8_t rogue_filter_scroll;
+    bool reset_confirm_yes;
     uint8_t tools_row;
     uint8_t sight_row;
     uint8_t sight_editing;
