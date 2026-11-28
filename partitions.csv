@@ -1,5 +1,5 @@
 # Name,   Type, SubType, Offset,   Size,     Flags
-# 8 MB Flash：NVS 扩到 256 KB 以容纳 300 条历史记录；factory 必须 0x10000 对齐。
-nvs,      data, nvs,     0x9000,   0x40000,
-phy_init, data, phy,     0x49000,  0x1000,
-factory,  app,  factory, 0x50000,  0x7b0000,
+# 8 MB flash: 128 KB NVS for the 300-record history and settings; factory is 0x10000-aligned.
+nvs,      data, nvs,     0x9000,   0x20000,
+phy_init, data, phy,     0x29000,  0x1000,
+factory,  app,  factory, 0x30000,  0x7d0000,
