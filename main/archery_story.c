@@ -118,6 +118,23 @@ const char *archery_story_normal_title(uint8_t index) {
     return index < ARCHERY_STORY_NORMAL_COUNT ? titles[index] : titles[0];
 }
 
+static const char *const s_set_names[ARCHERY_STORY_SET_COUNT] = {
+    "山野", "江湖", "边塞", "朝堂", "大漠", "问道",
+};
+
+static const char *const s_ending_titles[ARCHERY_STORY_SET_COUNT] = {
+    "山野·归", "江湖·渡", "边塞·还", "朝堂·退", "大漠·井", "问道·心",
+};
+
+static const char *const s_ending_texts[ARCHERY_STORY_SET_COUNT] = {
+    "山门外的雨停了。你把最后一支箭从靶上拔下，忽然不再想射。下山时，竹叶上的水珠落进溪里，一声比一声轻。",
+    "天亮时，牌坊下的雨停了。追兵没有再来，火把在巷口一支支熄灭。你把弓收进布囊，随第一班渡船过江，身后只剩水声。",
+    "援军的旗从北面压来，城下的黑骑终于退了。你坐在缺口上，把最后一支箭插回箭囊，看见雪停了，城墙外升起第一缕炊烟。",
+    "钟声过后，宫门从里面打开。你没有放箭，只把弓放在丹陛上，转身走进晨雾；身后百官静立，像一排终于落定的箭。",
+    "沙暴过去，古城下面露出一口井。你把最后一壶水倒给马，坐在残墙下，看远处商队的铃声慢慢靠近。",
+    "多年后，有人问你，山上有什么。你正在扫落叶。扫帚停了一下。你指了指来时的路，又指了指自己的胸口。风从空箭囊里穿过去。没有声音。",
+};
+
 const char *archery_story_normal(uint8_t index) {
     return index < ARCHERY_STORY_NORMAL_COUNT ? s_normal[index] : s_normal[0];
 }
@@ -134,4 +151,16 @@ const char *archery_story_hidden(uint8_t main_id, uint8_t set) {
     default: return "";
     }
     return s_hidden[set ? 1u : 0u][index];
+}
+
+const char *archery_story_set_name(uint8_t set) {
+    return set < ARCHERY_STORY_SET_COUNT ? s_set_names[set] : "";
+}
+
+const char *archery_story_ending_title(uint8_t set) {
+    return set < ARCHERY_STORY_SET_COUNT ? s_ending_titles[set] : "";
+}
+
+const char *archery_story_ending_text(uint8_t set) {
+    return set < ARCHERY_STORY_SET_COUNT ? s_ending_texts[set] : "";
 }

@@ -322,6 +322,54 @@ static void ruler_rect(lv_obj_t *scr, int x, int y, int w, int h, uint32_t color
     lv_obj_remove_flag(line, LV_OBJ_FLAG_SCROLLABLE);
 }
 
+static bool chapter_row_available(const archery_flow_t *flow, uint8_t row) {
+    if (row == 0u) return true;
+    if (row < 5u) return (flow->chapter_mask & (uint8_t)(1u << (row - 1u))) != 0u;
+    if (row == 5u) return (flow->chapter_mask & 0x1Fu) == 0x1Fu;
+    return false;
+}
+
+static void render_chapters(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, "章节");
+    for (uint8_t row = 0; row < 6u; row++) {
+        const bool available = chapter_row_available(flow, row);
+        const bool selected = row == flow->chapter_select;
+        const archery_rect_t rect = {12, (int16_t)(48 + row * 38), 216, 32};
+        lv_obj_t *card = make_card(scr, rect, selected, false);
+        const char *text;
+        if (row < 5u) text = archery_story_set_name(row);
+        else text = available ? "问道" : "？";
+        lv_obj_t *label = make_label(card, text, ARCHERY_FONT_BODY,
+                                     available ? (selected ? C_GOLD : C_TEXT) : C_MUTED);
+        lv_obj_center(label);
+    }
+    add_hint(scr, "上/下 选择 · 确定 进入 · 长按 返回", 292);
+}
+
+static void render_ending(lv_obj_t *scr, const archery_flow_t *flow) {
+    add_title(scr, archery_story_ending_title(flow->story_set));
+    lv_obj_t *body = make_label(scr, archery_story_ending_text(flow->story_set),
+                                ARCHERY_FONT_BODY, C_TEXT);
+    lv_obj_set_width(body, 216);
+    lv_obj_set_pos(body, 12, 58);
+    lv_obj_set_style_text_align(body, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_line_space(body, 4, 0);
+    lv_label_set_long_mode(body, LV_LABEL_LONG_WRAP);
+
+    const bool cont = flow->ending_select == 0u;
+    const archery_rect_t cont_rect = {16, 238, 100, 32};
+    lv_obj_t *cont_card = make_card(scr, cont_rect, cont, false);
+    lv_obj_t *cont_label = make_label(cont_card, "继续挑战", ARCHERY_FONT_BODY,
+                                      cont ? C_GOLD : C_TEXT);
+    lv_obj_center(cont_label);
+    const archery_rect_t home_rect = {124, 238, 100, 32};
+    lv_obj_t *home_card = make_card(scr, home_rect, !cont, false);
+    lv_obj_t *home_label = make_label(home_card, "归隐田园", ARCHERY_FONT_BODY,
+                                      !cont ? C_GOLD : C_TEXT);
+    lv_obj_center(home_label);
+    add_hint(scr, "上/下 选择 · 确定 · 长按 返回主页", 292);
+}
+
 static void render_disclaimer(lv_obj_t *scr, const archery_flow_t *flow) {
     (void)flow;
     add_title(scr, "挑战");
@@ -1876,6 +1924,8 @@ void archery_ui_show(const archery_flow_t *flow, const archery_history_t *histor
     case ARCHERY_PAGE_TOOLS: render_tools(scr, flow); break;
     case ARCHERY_PAGE_CHALLENGE: render_challenge(scr, flow); break;
     case ARCHERY_PAGE_DISCLAIMER: render_disclaimer(scr, flow); break;
+    case ARCHERY_PAGE_CHAPTERS: render_chapters(scr, flow); break;
+    case ARCHERY_PAGE_ENDING: render_ending(scr, flow); break;
     case ARCHERY_PAGE_STORY: render_story(scr, flow); break;
     case ARCHERY_PAGE_RULER: render_ruler(scr, flow); break;
     case ARCHERY_PAGE_SIGHT_CALC: render_sight_calc(scr, flow); break;

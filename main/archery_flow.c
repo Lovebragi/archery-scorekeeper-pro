@@ -258,13 +258,71 @@ static archery_act_t handle_auto_check(archery_flow_t *flow, archery_key_t key) 
     return ARCHERY_ACT_NONE;
 }
 
+static bool chapter_available(const archery_flow_t *flow, uint8_t set) {
+    if (set == 0u) return true;
+    if (set < 5u) return (flow->chapter_mask & (uint8_t)(1u << (set - 1u))) != 0u;
+    if (set == 5u) return (flow->chapter_mask & 0x1Fu) == 0x1Fu;
+    return false;
+}
+
+static void chapter_move(archery_flow_t *flow, int delta) {
+    uint8_t at = flow->chapter_select;
+    for (uint8_t i = 0; i < 6u; i++) {
+        at = (uint8_t)((at + 6u + (delta < 0 ? -1 : 1)) % 6u);
+        if (chapter_available(flow, at)) {
+            flow->chapter_select = at;
+            return;
+        }
+    }
+}
+
 static archery_act_t handle_disclaimer(archery_flow_t *flow, archery_key_t key) {
     if (key == ARCHERY_KEY_OK) {
         flow->story_hidden = false;
-        flow->page = ARCHERY_PAGE_STORY;
-        return ARCHERY_ACT_STORY_START;
+        flow->chapter_select = 0;
+        flow->page = ARCHERY_PAGE_CHAPTERS;
     } else if (key == ARCHERY_KEY_OK_LONG) {
         flow->page = ARCHERY_PAGE_HOME;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_chapters(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP) {
+        chapter_move(flow, -1);
+    } else if (key == ARCHERY_KEY_DOWN) {
+        chapter_move(flow, 1);
+    } else if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_HOME;
+    } else if (key == ARCHERY_KEY_OK) {
+        if (!chapter_available(flow, flow->chapter_select)) return ARCHERY_ACT_NONE;
+        flow->story_set = flow->chapter_select;
+        flow->story_index = (uint8_t)(flow->story_set * 12u);
+        flow->story_hidden = false;
+        archery_challenge_init(&flow->challenge);
+        flow->challenge_choice = 0;
+        flow->page = ARCHERY_PAGE_STORY;
+        return ARCHERY_ACT_STORY_START;
+    }
+    return ARCHERY_ACT_NONE;
+}
+
+static archery_act_t handle_ending(archery_flow_t *flow, archery_key_t key) {
+    if (key == ARCHERY_KEY_UP || key == ARCHERY_KEY_DOWN) {
+        flow->ending_select = flow->ending_select ? 0u : 1u;
+        return ARCHERY_ACT_NONE;
+    }
+    if (key == ARCHERY_KEY_OK_LONG) {
+        flow->page = ARCHERY_PAGE_HOME;
+        return ARCHERY_ACT_ENDING_HOME;
+    }
+    if (key == ARCHERY_KEY_OK) {
+        if (flow->ending_select == 0u) {
+            flow->page = ARCHERY_PAGE_CHAPTERS;
+            return ARCHERY_ACT_ENDING_CONTINUE;
+        }
+        flow->page = ARCHERY_PAGE_HOME;
+        return ARCHERY_ACT_ENDING_HOME;
     }
     return ARCHERY_ACT_NONE;
 }
@@ -1346,6 +1404,8 @@ archery_act_t archery_flow_handle(archery_flow_t *flow, archery_key_t key) {
     case ARCHERY_PAGE_CHALLENGE: return handle_challenge(flow, key);
     case ARCHERY_PAGE_STORY: return handle_story(flow, key);
     case ARCHERY_PAGE_DISCLAIMER: return handle_disclaimer(flow, key);
+    case ARCHERY_PAGE_CHAPTERS: return handle_chapters(flow, key);
+    case ARCHERY_PAGE_ENDING: return handle_ending(flow, key);
     }
     return ARCHERY_ACT_NONE;
 }

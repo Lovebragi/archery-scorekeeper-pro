@@ -68,6 +68,7 @@ idf_component_register(
     SRCS "main.c"
          "archery_app.c"
          "archery_story.c"
+         "archery_chapters.c"
          "archery_challenge.c"
          "archery_challenge_voice.c"
          "archery_clock.c"

@@ -44,6 +44,8 @@ typedef enum {
     ARCHERY_PAGE_CHALLENGE,
     ARCHERY_PAGE_STORY,
     ARCHERY_PAGE_DISCLAIMER,
+    ARCHERY_PAGE_CHAPTERS,
+    ARCHERY_PAGE_ENDING,
 } archery_page_t;
 
 // 主页入口数：开始训练 / 历史记录 / 设置 / 联网。
@@ -106,6 +108,8 @@ typedef enum {
     ARCHERY_ACT_CHALLENGE_RESULT,
     ARCHERY_ACT_STORY_START,
     ARCHERY_ACT_STORY_DONE,
+    ARCHERY_ACT_ENDING_CONTINUE,
+    ARCHERY_ACT_ENDING_HOME,
     ARCHERY_ACT_VOICE_VERIFY,        // 离开联网页：停止配网热点
     ARCHERY_ACT_WIFI_CONNECT_PASSWORD,  // 用设备上输入的密码连接（flow->wifi_password）
     ARCHERY_ACT_TIMER_START,            // 进入计时页：上层启动 1 秒 + 10 秒准备 + 射击倒计时
@@ -161,6 +165,10 @@ typedef struct {
     bool story_hidden;
     uint8_t story_hidden_main;
     uint8_t story_hidden_set;
+    uint8_t chapter_mask;      // bit0..4：已完成的五套故事
+    uint8_t chapter_select;    // 章节选择 0..5
+    uint8_t ending_select;     // 0 = 继续挑战, 1 = 归隐田园
+    uint8_t story_set;         // 当前故事套 0..5
     uint8_t tools_row;
     uint8_t sight_row;
     uint8_t sight_editing;

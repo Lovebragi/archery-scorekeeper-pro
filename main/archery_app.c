@@ -12,6 +12,7 @@
 #include "archery_logbuf.h"
 #include "archery_name.h"
 #include "archery_challenge_voice.h"
+#include "archery_chapters.h"
 #include "archery_story.h"
 #include "archery_history.h"
 #include "archery_power.h"
@@ -631,18 +632,6 @@ static uint8_t challenge_hidden_percent(void) {
 
 static bool s_story_voice_pending;
 
-#define STORY_SET_COUNT 6u
-#define STORY_LEVEL_COUNT 12u
-
-static uint8_t story_random_start(uint8_t exclude_set) {
-    uint8_t set = (uint8_t)(esp_random() % STORY_SET_COUNT);
-    if (exclude_set < STORY_SET_COUNT && set == exclude_set) {
-        set = (uint8_t)((set + 1u + esp_random() % (STORY_SET_COUNT - 1u)) %
-                        STORY_SET_COUNT);
-    }
-    return (uint8_t)(set * STORY_LEVEL_COUNT);
-}
-
 static void challenge_play_voice(void) {
     if (!s_flow.challenge.generated) return;
     archery_challenge_voice_play(s_flow.challenge.main_id,
@@ -840,7 +829,6 @@ static void handle_key(archery_key_t key) {
             s_flow.story_hidden = true;
             s_flow.story_hidden_main = s_flow.challenge.main_id;
             s_flow.story_hidden_set = (uint8_t)(esp_random() % 2u);
-            s_flow.story_index = story_random_start(0xFFu);  // 隐藏后随机开始一套
             s_flow.page = ARCHERY_PAGE_STORY;
             s_story_voice_pending = true;
             archery_challenge_voice_play_cue();
@@ -852,27 +840,34 @@ static void handle_key(archery_key_t key) {
         const bool judged_success = s_flow.challenge_choice == 0u;
         const bool old_hidden = s_flow.challenge.generated &&
                                 archery_challenge_main_is_hidden(s_flow.challenge.main_id);
+        const bool normal_success = judged_success && !old_hidden;
+
+        if (normal_success &&
+            (s_flow.story_index % ARCHERY_STORY_LEVEL_COUNT) + 1u >=
+                ARCHERY_STORY_LEVEL_COUNT) {
+            archery_chapters_complete(s_flow.story_set);
+            s_flow.chapter_mask = archery_chapters_mask();
+            s_flow.chapter_select = s_flow.story_set < 5u
+                                        ? (uint8_t)(s_flow.story_set + 1u) : 5u;
+            s_flow.page = ARCHERY_PAGE_ENDING;
+            s_flow.ending_select = 0;
+            s_story_voice_pending = false;
+            break;
+        }
+        if (normal_success) {
+            s_flow.story_index++;
+        }
+
         challenge_generate(judged_success);
         if (!s_flow.challenge.generated) break;
         if (archery_challenge_main_is_hidden(s_flow.challenge.main_id)) {
             s_flow.story_hidden = true;
             s_flow.story_hidden_main = s_flow.challenge.main_id;
             s_flow.story_hidden_set = (uint8_t)(esp_random() % 2u);
-            s_flow.story_index = story_random_start(0xFFu);  // 隐藏后随机开始一套
             s_flow.page = ARCHERY_PAGE_STORY;
             s_story_voice_pending = true;
             archery_challenge_voice_play_cue();
-        } else if (old_hidden) {
-            s_flow.story_hidden = false;
-            s_flow.page = ARCHERY_PAGE_STORY;
-            s_story_voice_pending = true;
-        } else if (judged_success) {
-            if ((s_flow.story_index % STORY_LEVEL_COUNT) + 1u >= STORY_LEVEL_COUNT) {
-                s_flow.story_index = story_random_start(
-                    (uint8_t)(s_flow.story_index / STORY_LEVEL_COUNT));
-            } else {
-                s_flow.story_index++;
-            }
+        } else if (normal_success || old_hidden) {
             s_flow.story_hidden = false;
             s_flow.page = ARCHERY_PAGE_STORY;
             s_story_voice_pending = true;
@@ -884,7 +879,6 @@ static void handle_key(archery_key_t key) {
     }
     case ARCHERY_ACT_STORY_START:
         s_flow.story_hidden = false;
-        s_flow.story_index = story_random_start(0xFFu);
         break;
     case ARCHERY_ACT_STORY_DONE:
         if (!s_flow.challenge.generated) {
@@ -894,7 +888,6 @@ static void handle_key(archery_key_t key) {
                 s_flow.story_hidden = true;
                 s_flow.story_hidden_main = s_flow.challenge.main_id;
                 s_flow.story_hidden_set = (uint8_t)(esp_random() % 2u);
-                s_flow.story_index = story_random_start(0xFFu);
                 s_flow.page = ARCHERY_PAGE_STORY;
                 s_story_voice_pending = true;
                 archery_challenge_voice_play_cue();
@@ -909,6 +902,14 @@ static void handle_key(archery_key_t key) {
             archery_challenge_voice_stop_cue();
             challenge_play_voice();
         }
+        break;
+    case ARCHERY_ACT_ENDING_CONTINUE:
+        s_flow.challenge.generated = false;
+        s_story_voice_pending = false;
+        break;
+    case ARCHERY_ACT_ENDING_HOME:
+        s_flow.challenge.generated = false;
+        s_story_voice_pending = false;
         break;
     case ARCHERY_ACT_NONE:
         break;
@@ -1722,6 +1723,8 @@ void archery_app_start(void) {
     }
 
     archery_flow_init(&s_flow);
+    archery_chapters_init();
+    s_flow.chapter_mask = archery_chapters_mask();
     (void)archery_sight_load(&s_flow.sight);
     archery_metro_config_t metro_cfg;
     if (archery_metro_load(&metro_cfg)) {
