@@ -5,6 +5,7 @@ endif()
 
 set(ARCHERY_CHALLENGE_VOICE_FILES
     "../assets/voice/challenge/main_32.pcm"
+    "../assets/voice/challenge/main_33.pcm"
     "../assets/voice/challenge/main_31.pcm"
     "../assets/voice/challenge/main_30.pcm"
     "../assets/voice/challenge/diff_12.pcm"

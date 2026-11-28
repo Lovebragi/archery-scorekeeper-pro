@@ -462,7 +462,7 @@ static void render_challenge(lv_obj_t *scr, const archery_flow_t *flow) {
     lv_obj_center(success_label);
     const archery_rect_t fail_rect = {124, 234, 100, 24};
     lv_obj_t *fail_card = make_card(scr, fail_rect, !success_selected, false);
-    lv_obj_t *fail_label = make_label(fail_card, "挑战失败", ARCHERY_FONT_BODY,
+    lv_obj_t *fail_label = make_label(fail_card, "更换挑战", ARCHERY_FONT_BODY,
                                       !success_selected ? C_GOLD : C_TEXT);
     lv_obj_center(fail_label);
 

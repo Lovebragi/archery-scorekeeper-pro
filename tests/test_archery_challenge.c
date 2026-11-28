@@ -5,7 +5,7 @@
 #include <string.h>
 
 static void test_counts_and_text(void) {
-    assert(archery_challenge_main_count() == 33u);
+    assert(archery_challenge_main_count() == 34u);
     assert(archery_challenge_mod_count_total() == 8u);
     for (uint8_t i = 0; i < archery_challenge_main_count(); i++) {
         assert(archery_challenge_main_text(i)[0] != '\0');
@@ -52,7 +52,7 @@ static void test_generation_constraints(void) {
                      (c.mod_ids[0] == 6u && c.mod_ids[1] == 1u)));
         }
     }
-    assert(seen_main == 0x1FFFFFFFFULL);
+    assert(seen_main == 0x3FFFFFFFFULL);
     assert(seen_mods == 0xFFu);
 }
 
@@ -88,6 +88,22 @@ static void test_single_arrow_modifiers(void) {
     }
 }
 
+static void test_difficulty_ranges(void) {
+    static const uint8_t mins[12] = {1,2,3,4,4,5,5,6,7,8,8,9};
+    static const uint8_t maxs[12] = {3,4,5,6,6,7,7,8,9,9,10,10};
+    archery_challenge_t c;
+    for (uint8_t level = 0; level < 12; level++) {
+        for (uint32_t seed = 1; seed < 40; seed++) {
+            archery_challenge_init(&c);
+            assert(archery_challenge_generate_range(&c, seed, 0u,
+                                                    mins[level], maxs[level]));
+            assert(!archery_challenge_main_is_hidden(c.main_id));
+            assert(c.difficulty >= mins[level]);
+            assert(c.difficulty <= maxs[level]);
+        }
+    }
+}
+
 static void test_hidden_guarantee(void) {
     archery_challenge_t c;
     archery_challenge_init(&c);
@@ -102,6 +118,7 @@ int main(void) {
     test_counts_and_text();
     test_generation_constraints();
     test_no_immediate_repeat();
+    test_difficulty_ranges();
     test_single_arrow_modifiers();
     test_hidden_guarantee();
     puts("archery_challenge tests passed");

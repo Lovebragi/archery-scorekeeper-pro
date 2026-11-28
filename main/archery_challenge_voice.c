@@ -46,6 +46,7 @@ CLIP_SYMBOL(main_27_pcm);
 CLIP_SYMBOL(main_28_pcm);
 CLIP_SYMBOL(main_29_pcm);
 CLIP_SYMBOL(main_32_pcm);
+CLIP_SYMBOL(main_33_pcm);
 CLIP_SYMBOL(main_31_pcm);
 CLIP_SYMBOL(main_30_pcm);
 
@@ -116,6 +117,7 @@ static const clip_t s_main[] = {
     {_binary_main_30_pcm_start, _binary_main_30_pcm_end},
     {_binary_main_31_pcm_start, _binary_main_31_pcm_end},
     {_binary_main_32_pcm_start, _binary_main_32_pcm_end},
+    {_binary_main_33_pcm_start, _binary_main_33_pcm_end},
 };
 static const clip_t s_mod[] = {
     {_binary_mod_01_pcm_start, _binary_mod_01_pcm_end},  // T4

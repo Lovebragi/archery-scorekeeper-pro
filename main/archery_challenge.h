@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#define ARCHERY_CHALLENGE_MAIN_COUNT 33u
+#define ARCHERY_CHALLENGE_MAIN_COUNT 34u
 #define ARCHERY_CHALLENGE_MOD_COUNT 8u
 #define ARCHERY_CHALLENGE_MAX_MODS 2u
 
@@ -33,6 +33,9 @@ void archery_challenge_init(archery_challenge_t *challenge);
 // 连续生成时会尽量避免与上一项完全相同；失败时保留原状态并返回 false。
 bool archery_challenge_generate(archery_challenge_t *challenge, uint32_t seed,
                                 uint8_t hidden_percent);
+bool archery_challenge_generate_range(archery_challenge_t *challenge, uint32_t seed,
+                                      uint8_t hidden_percent, uint8_t min_difficulty,
+                                      uint8_t max_difficulty);
 
 uint8_t archery_challenge_main_count(void);
 uint8_t archery_challenge_mod_count_total(void);

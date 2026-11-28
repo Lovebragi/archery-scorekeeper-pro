@@ -27,7 +27,7 @@ static const challenge_main_def_t s_main[] = {
     {"连中三元：三支都是内十", 3, 11, false, false, 0, 0, false, true},
     {"6 支全部上靶，最后一箭 10 环", 6, 5, true, false, 0, 10, false, false},
     {"6 支全部 8 环以上", 6, 4, false, false, 0, 0, false, false},
-    {"6 支全部上靶", 6, 2, false, false, 0, 0, false, false},
+    {"6 支全部上靶", 6, 1, false, false, 0, 0, false, false},
     {"6 箭总分 ≥ 52", 6, 4, false, true, 52, 0, false, false},
     {"6 箭总分 ≥ 54", 6, 6, false, true, 54, 0, false, false},
     {"10→10→9→9→8→8", 6, 9, true, false, 0, 8, false, false},
@@ -55,6 +55,7 @@ static const challenge_main_def_t s_main[] = {
     {"一箭定乾坤：一支内十", 1, 7, true, false, 0, 0, false, true},
     {"十全十美：十支全部 9 环以上", 10, 10, false, false, 0, 0, false, false},
     {"二龙戏珠：两支都是内十", 2, 9, false, false, 0, 0, false, true},
+    {"6 箭总分 ≥ 42", 6, 2, false, true, 42, 0, false, false},
 };
 
 static const challenge_mod_def_t s_mod[] = {
@@ -125,20 +126,26 @@ static bool mod_fits(uint8_t main_id, uint8_t mod_id, bool hidden) {
     return total <= 10u;
 }
 
+bool archery_challenge_generate(archery_challenge_t *challenge, uint32_t seed,
+                                uint8_t hidden_percent) {
+    return archery_challenge_generate_range(challenge, seed, hidden_percent, 1u, 15u);
+}
+
 void archery_challenge_init(archery_challenge_t *challenge) {
     if (!challenge) return;
     memset(challenge, 0, sizeof(*challenge));
 }
 
-bool archery_challenge_generate(archery_challenge_t *challenge, uint32_t seed,
-                                uint8_t hidden_percent) {
+bool archery_challenge_generate_range(archery_challenge_t *challenge, uint32_t seed,
+                                      uint8_t hidden_percent, uint8_t min_difficulty,
+                                      uint8_t max_difficulty) {
     if (!challenge) return false;
     uint32_t rng = seed ? seed : 1u;
-    for (unsigned attempt = 0; attempt < 16; attempt++) {
+    for (unsigned attempt = 0; attempt < 64; attempt++) {
         static const uint8_t normal_ids[] = {
             0u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u, 13u, 14u,
             15u, 16u, 17u, 18u, 19u, 20u, 21u, 22u, 23u, 24u, 25u,
-            26u, 27u, 28u,
+            26u, 27u, 28u, 33u,
         };
         static const uint8_t hidden_ids[] = {1u, 2u, 29u, 30u, 31u, 32u};
         const bool hidden = (next_random(&rng) % 100u) <
@@ -198,6 +205,18 @@ bool archery_challenge_generate(archery_challenge_t *challenge, uint32_t seed,
         }
         if (chosen != mod_count) mod_count = chosen;
 
+        uint8_t difficulty = s_main[main_id].base_difficulty;
+        for (uint8_t i = 0; i < mod_count; i++) {
+            difficulty = (uint8_t)(difficulty + s_mod[mod_ids[i]].add_difficulty);
+        }
+        if (difficulty == 0u) difficulty = 1u;
+        if (difficulty > 15u) difficulty = 15u;
+        const bool hidden_result = archery_challenge_main_is_hidden(main_id);
+        if (!hidden_result && min_difficulty > 0u &&
+            (difficulty < min_difficulty || difficulty > max_difficulty)) {
+            continue;
+        }
+
         const bool same_as_previous =
             challenge->generated &&
             main_id == challenge->prev_main &&
@@ -205,19 +224,13 @@ bool archery_challenge_generate(archery_challenge_t *challenge, uint32_t seed,
             (mod_count == 0u ||
              (mod_ids[0] == challenge->prev_mod_ids[0] &&
               (mod_count == 1u || mod_ids[1] == challenge->prev_mod_ids[1])));
-        if (same_as_previous && attempt < 15u) continue;
+        if (same_as_previous && attempt < 63u) continue;
 
         challenge->main_id = main_id;
         challenge->mod_count = mod_count;
         challenge->mod_ids[0] = mod_count > 0u ? mod_ids[0] : 0u;
         challenge->mod_ids[1] = mod_count > 1u ? mod_ids[1] : 0u;
-        challenge->difficulty = s_main[main_id].base_difficulty;
-        for (uint8_t i = 0; i < mod_count; i++) {
-            challenge->difficulty = (uint8_t)(challenge->difficulty +
-                                              s_mod[challenge->mod_ids[i]].add_difficulty);
-        }
-        if (challenge->difficulty == 0u) challenge->difficulty = 1u;
-        if (challenge->difficulty > 15u) challenge->difficulty = 15u;
+        challenge->difficulty = difficulty;
         challenge->arrows = s_main[main_id].arrows;
         challenge->generated = true;
         challenge->prev_main = main_id;
@@ -260,5 +273,6 @@ bool archery_challenge_main_needs_confirm(uint8_t main_id) {
 }
 
 bool archery_challenge_main_is_hidden(uint8_t main_id) {
-    return main_id == 1u || main_id == 2u || main_id >= 29u;
+    return main_id == 1u || main_id == 2u ||
+           (main_id >= 29u && main_id <= 32u);
 }

@@ -631,6 +631,20 @@ static uint8_t challenge_hidden_percent(void) {
 }
 
 static bool s_story_voice_pending;
+static bool s_chapter_first_challenge = true;
+
+static const uint8_t s_chapter_min[ARCHERY_STORY_LEVEL_COUNT] = {
+    1, 2, 3, 4, 4, 5, 5, 6, 7, 8, 8, 9,
+};
+static const uint8_t s_chapter_max[ARCHERY_STORY_LEVEL_COUNT] = {
+    3, 4, 5, 6, 6, 7, 7, 8, 9, 9, 10, 10,
+};
+
+static void chapter_difficulty_bounds(uint8_t *min_difficulty, uint8_t *max_difficulty) {
+    const uint8_t level = (uint8_t)(s_flow.story_index % ARCHERY_STORY_LEVEL_COUNT);
+    *min_difficulty = s_chapter_min[level];
+    *max_difficulty = s_chapter_max[level];
+}
 
 static void challenge_play_voice(void) {
     if (!s_flow.challenge.generated) return;
@@ -650,11 +664,18 @@ static void challenge_generate(bool judged_success) {
         const uint32_t next = (uint32_t)s_hidden_tenths + add;
         s_hidden_tenths = next >= 1000u ? 1000u : (uint16_t)next;
     }
-    const bool force_normal = s_hidden_cooldown > 0u;
-    if (!archery_challenge_generate(&s_flow.challenge, esp_random(),
-                                    force_normal ? 0u : challenge_hidden_percent())) {
+    const bool force_normal = s_hidden_cooldown > 0u || s_chapter_first_challenge;
+    uint8_t min_difficulty = 1u;
+    uint8_t max_difficulty = 15u;
+    chapter_difficulty_bounds(&min_difficulty, &max_difficulty);
+    if (!archery_challenge_generate_range(&s_flow.challenge, esp_random(),
+                                          force_normal ? 0u : challenge_hidden_percent(),
+                                          min_difficulty, max_difficulty)) {
+        (void)archery_challenge_generate(&s_flow.challenge, esp_random(),
+                                         force_normal ? 0u : challenge_hidden_percent());
         return;
     }
+    s_chapter_first_challenge = false;
     if (archery_challenge_main_is_hidden(s_flow.challenge.main_id)) {
         s_hidden_tenths = 60u;
         s_hidden_cooldown = 2u;
@@ -879,6 +900,7 @@ static void handle_key(archery_key_t key) {
     }
     case ARCHERY_ACT_STORY_START:
         s_flow.story_hidden = false;
+        s_chapter_first_challenge = true;
         break;
     case ARCHERY_ACT_STORY_DONE:
         if (!s_flow.challenge.generated) {
