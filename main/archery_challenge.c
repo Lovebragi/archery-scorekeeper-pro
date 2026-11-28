@@ -126,6 +126,14 @@ static bool mod_fits(uint8_t main_id, uint8_t mod_id, bool hidden) {
     return total <= 10u;
 }
 
+bool archery_challenge_generate_range(archery_challenge_t *challenge, uint32_t seed,
+                                      uint8_t hidden_percent, uint8_t min_difficulty,
+                                      uint8_t max_difficulty) {
+    const uint16_t hundredths = (uint16_t)((hidden_percent > 100u ? 100u : hidden_percent) * 100u);
+    return archery_challenge_generate_range_chance(challenge, seed, hundredths,
+                                                  min_difficulty, max_difficulty);
+}
+
 bool archery_challenge_generate(archery_challenge_t *challenge, uint32_t seed,
                                 uint8_t hidden_percent) {
     return archery_challenge_generate_range(challenge, seed, hidden_percent, 1u, 15u);
@@ -136,9 +144,9 @@ void archery_challenge_init(archery_challenge_t *challenge) {
     memset(challenge, 0, sizeof(*challenge));
 }
 
-bool archery_challenge_generate_range(archery_challenge_t *challenge, uint32_t seed,
-                                      uint8_t hidden_percent, uint8_t min_difficulty,
-                                      uint8_t max_difficulty) {
+bool archery_challenge_generate_range_chance(archery_challenge_t *challenge, uint32_t seed,
+                                             uint16_t hidden_hundredths, uint8_t min_difficulty,
+                                             uint8_t max_difficulty) {
     if (!challenge) return false;
     uint32_t rng = seed ? seed : 1u;
     for (unsigned attempt = 0; attempt < 64; attempt++) {
@@ -148,8 +156,8 @@ bool archery_challenge_generate_range(archery_challenge_t *challenge, uint32_t s
             26u, 27u, 28u, 33u,
         };
         static const uint8_t hidden_ids[] = {1u, 2u, 29u, 30u, 31u, 32u};
-        const bool hidden = (next_random(&rng) % 100u) <
-                            (hidden_percent > 100u ? 100u : hidden_percent);
+        const bool hidden = (next_random(&rng) % 10000u) <
+                            (hidden_hundredths > 10000u ? 10000u : hidden_hundredths);
         const uint8_t main_id = hidden
             ? hidden_ids[next_random(&rng) % (uint8_t)(sizeof(hidden_ids))]
             : normal_ids[next_random(&rng) % (uint8_t)(sizeof(normal_ids))];

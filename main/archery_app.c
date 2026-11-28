@@ -624,12 +624,8 @@ static void auto_check_start(void) {
     redraw();
 }
 
-static uint16_t s_hidden_tenths = 60u;  // 6 项隐藏 × 1%
+static uint16_t s_hidden_hundredths = 30u;  // 6 项 × 0.05% = 0.3%
 static uint8_t s_hidden_cooldown;
-
-static uint8_t challenge_hidden_percent(void) {
-    return (uint8_t)((s_hidden_tenths + 5u) / 10u);
-}
 
 static bool s_story_voice_pending;
 static bool s_chapter_first_challenge = true;
@@ -660,6 +656,8 @@ static uint8_t rogue_story_index(void) {
     return (uint8_t)(esp_random() % 60u);
 }
 
+static void challenge_generate(bool judged_success);
+
 static void rogue_begin_story(void) {
     s_flow.rogue_active = true;
     s_flow.story_hidden = false;
@@ -667,8 +665,14 @@ static void rogue_begin_story(void) {
     s_flow.story_set = (uint8_t)(s_flow.story_index / ARCHERY_STORY_LEVEL_COUNT);
     s_flow.challenge = (archery_challenge_t){0};
     s_flow.challenge_choice = 0;
-    s_flow.page = ARCHERY_PAGE_STORY;
     s_chapter_first_challenge = true;
+    if (!s_flow.rogue_show_story) {
+        challenge_generate(false);
+        s_flow.page = s_flow.challenge.generated ? ARCHERY_PAGE_CHALLENGE : ARCHERY_PAGE_MODES;
+        if (s_flow.challenge.generated) challenge_play_voice();
+    } else {
+        s_flow.page = ARCHERY_PAGE_STORY;
+    }
 }
 
 static bool rogue_challenge_allowed(void) {
@@ -691,11 +695,11 @@ static bool rogue_challenge_allowed(void) {
 static void challenge_generate(bool judged_success) {
     const bool old_hidden = s_flow.challenge.generated &&
                             archery_challenge_main_is_hidden(s_flow.challenge.main_id);
-    if (judged_success && !old_hidden && s_hidden_tenths < 1000u) {
-        // 普通挑战难度 8 → 每项 +0.8%，六项共 +4.8%。
+    if (judged_success && !old_hidden && s_hidden_hundredths < 10000u) {
+        // 每项 +难度 × 0.01%，六项共 +难度 × 0.06%。
         const uint32_t add = 6u * (uint32_t)s_flow.challenge.difficulty;
-        const uint32_t next = (uint32_t)s_hidden_tenths + add;
-        s_hidden_tenths = next >= 1000u ? 1000u : (uint16_t)next;
+        const uint32_t next = (uint32_t)s_hidden_hundredths + add;
+        s_hidden_hundredths = next >= 10000u ? 10000u : (uint16_t)next;
     }
     const bool force_normal = s_hidden_cooldown > 0u || s_chapter_first_challenge;
     uint8_t min_difficulty = 1u;
@@ -703,21 +707,23 @@ static void challenge_generate(bool judged_success) {
     chapter_difficulty_bounds(&min_difficulty, &max_difficulty);
     bool generated = false;
     for (uint8_t attempt = 0; attempt < 32u; attempt++) {
-        generated = archery_challenge_generate_range(&s_flow.challenge, esp_random(),
-                                                     force_normal ? 0u : challenge_hidden_percent(),
-                                                     min_difficulty, max_difficulty);
+        generated = archery_challenge_generate_range_chance(
+            &s_flow.challenge, esp_random(),
+            force_normal ? 0u : s_hidden_hundredths,
+            min_difficulty, max_difficulty);
         if (!generated) break;
         if (rogue_challenge_allowed()) break;
     }
     if (!generated) {
-        (void)archery_challenge_generate(&s_flow.challenge, esp_random(),
-                                         force_normal ? 0u : challenge_hidden_percent());
+        (void)archery_challenge_generate_range_chance(
+            &s_flow.challenge, esp_random(),
+            force_normal ? 0u : s_hidden_hundredths, 1u, 15u);
         return;
     }
     s_chapter_first_challenge = false;
     if (archery_challenge_main_is_hidden(s_flow.challenge.main_id)) {
-        s_hidden_tenths = 60u;
-        s_hidden_cooldown = 2u;
+        s_hidden_hundredths = 30u;
+        s_hidden_cooldown = 4u;
     } else if (s_hidden_cooldown > 0u) {
         s_hidden_cooldown--;
     }
@@ -908,6 +914,11 @@ static void handle_key(archery_key_t key) {
             challenge_generate(judged_success);
             if (!s_flow.challenge.generated) break;
             s_flow.story_hidden = archery_challenge_main_is_hidden(s_flow.challenge.main_id);
+            if (!s_flow.rogue_show_story) {
+                s_flow.page = ARCHERY_PAGE_CHALLENGE;
+                challenge_play_voice();
+                break;
+            }
             if (s_flow.story_hidden) {
                 s_flow.story_hidden_main = s_flow.challenge.main_id;
                 s_flow.story_hidden_set = (uint8_t)(esp_random() % 2u);
@@ -923,8 +934,6 @@ static void handle_key(archery_key_t key) {
                 ARCHERY_STORY_LEVEL_COUNT) {
             archery_chapters_complete(s_flow.story_set);
             s_flow.chapter_mask = archery_chapters_mask();
-    s_flow.rogue_block_main = archery_rogue_block_main();
-    s_flow.rogue_block_mod = archery_rogue_block_mod();
             s_flow.chapter_select = s_flow.story_set < 5u
                                         ? (uint8_t)(s_flow.story_set + 1u) : 5u;
             s_flow.page = ARCHERY_PAGE_ENDING;
@@ -986,7 +995,8 @@ static void handle_key(archery_key_t key) {
         rogue_begin_story();
         break;
     case ARCHERY_ACT_ROGUE_FILTER_CHANGED:
-        archery_rogue_save(s_flow.rogue_block_main, s_flow.rogue_block_mod);
+        archery_rogue_save(s_flow.rogue_block_main, s_flow.rogue_block_mod,
+                           s_flow.rogue_show_story);
         break;
     case ARCHERY_ACT_STORY_RESET:
         archery_chapters_reset();
@@ -1854,6 +1864,7 @@ void archery_app_start(void) {
     s_flow.chapter_mask = archery_chapters_mask();
     s_flow.rogue_block_main = archery_rogue_block_main();
     s_flow.rogue_block_mod = archery_rogue_block_mod();
+    s_flow.rogue_show_story = archery_rogue_show_story();
     (void)archery_sight_load(&s_flow.sight);
     archery_metro_config_t metro_cfg;
     if (archery_metro_load(&metro_cfg)) {

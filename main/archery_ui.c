@@ -339,7 +339,8 @@ static void render_modes(lv_obj_t *scr, const archery_flow_t *flow) {
 
 static void render_rogue_filter(lv_obj_t *scr, const archery_flow_t *flow) {
     add_title(scr, "定制肉鸽");
-    const uint8_t start_row = ARCHERY_ROGUE_MAIN_COUNT + ARCHERY_ROGUE_MOD_COUNT;
+    const uint8_t switch_row = ARCHERY_ROGUE_MAIN_COUNT + ARCHERY_ROGUE_MOD_COUNT;
+    const uint8_t start_row = (uint8_t)(switch_row + 1u);
     for (uint8_t visible = 0; visible < 4u; visible++) {
         const uint8_t row = (uint8_t)(flow->rogue_filter_scroll + visible);
         if (row > start_row) break;
@@ -350,6 +351,8 @@ static void render_rogue_filter(lv_obj_t *scr, const archery_flow_t *flow) {
         bool blocked = false;
         if (row == start_row) {
             text = "开始肉鸽";
+        } else if (row == switch_row) {
+            text = flow->rogue_show_story ? "显示剧情：开" : "显示剧情：关";
         } else if (row < ARCHERY_ROGUE_MAIN_COUNT) {
             blocked = (flow->rogue_block_main & (uint32_t)(1u << row)) != 0u;
             text = archery_challenge_main_text(archery_rogue_main_id(row));
@@ -362,7 +365,7 @@ static void render_rogue_filter(lv_obj_t *scr, const archery_flow_t *flow) {
         if (row == start_row) snprintf(line, sizeof(line), "%s", text);
         else snprintf(line, sizeof(line), "%s%s", blocked ? "× " : "· ", text);
         lv_obj_t *label = make_label(card, line, ARCHERY_FONT_BODY,
-                                     row == start_row ? C_GOLD
+                                     row == start_row || row == switch_row ? C_GOLD
                                      : (blocked ? C_MUTED : (selected ? C_GOLD : C_TEXT)));
         lv_obj_set_width(label, 204);
         lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
@@ -446,7 +449,8 @@ static void render_ending(lv_obj_t *scr, const archery_flow_t *flow) {
 
 static void render_disclaimer(lv_obj_t *scr, const archery_flow_t *flow) {
     (void)flow;
-    add_title(scr, "挑战");
+    s_title_visible = true;
+    centered_label(scr, "请注意", ARCHERY_FONT_TITLE, C_RED, 8);
     lv_obj_t *notice = make_label(scr,
         "本功能仅供娱乐和\n训练辅助，请在确认\n周围环境和人员安全\n后再使用本功能。\n安全第一，友谊第二，\n成绩第三。",
         ARCHERY_FONT_BOLD, C_TEXT);
@@ -540,7 +544,8 @@ static void render_challenge(lv_obj_t *scr, const archery_flow_t *flow) {
                                       !success_selected ? C_GOLD : C_TEXT);
     lv_obj_center(fail_label);
 
-    add_hint(scr, "上/下 选择 · 确定 提交 · 长按 返回", 270);
+    add_hint(scr, "上/下 选择 · 确定 提交", 266);
+    add_hint(scr, "长按确定 返回主页", 292);
 }
 
 static void render_story(lv_obj_t *scr, const archery_flow_t *flow) {

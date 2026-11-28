@@ -329,7 +329,8 @@ static archery_act_t handle_reset_confirm(archery_flow_t *flow, archery_key_t ke
 }
 
 static archery_act_t handle_rogue_filter(archery_flow_t *flow, archery_key_t key) {
-    const uint8_t start_row = ARCHERY_ROGUE_MAIN_COUNT + ARCHERY_ROGUE_MOD_COUNT;
+    const uint8_t switch_row = ARCHERY_ROGUE_MAIN_COUNT + ARCHERY_ROGUE_MOD_COUNT;
+    const uint8_t start_row = (uint8_t)(switch_row + 1u);
     if (key == ARCHERY_KEY_UP) {
         flow->rogue_filter_row = flow->rogue_filter_row == 0u
                                      ? start_row
@@ -344,7 +345,9 @@ static archery_act_t handle_rogue_filter(archery_flow_t *flow, archery_key_t key
             flow->rogue_active = true;
             return ARCHERY_ACT_ROGUE_START;
         }
-        if (flow->rogue_filter_row < ARCHERY_ROGUE_MAIN_COUNT) {
+        if (flow->rogue_filter_row == switch_row) {
+            flow->rogue_show_story = !flow->rogue_show_story;
+        } else if (flow->rogue_filter_row < ARCHERY_ROGUE_MAIN_COUNT) {
             flow->rogue_block_main ^= (uint32_t)(1u << flow->rogue_filter_row);
         } else {
             const uint8_t bit = (uint8_t)(flow->rogue_filter_row - ARCHERY_ROGUE_MAIN_COUNT);

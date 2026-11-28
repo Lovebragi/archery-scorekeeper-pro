@@ -8,6 +8,22 @@ Release history for the archery scorekeeper application. The repository-wide
 [changelog](../CHANGELOG.md) tracks the AI Passport project itself; this file
 follows the application's firmware versions.
 
+## 1.7.5 — 2026-11-28
+
+### Added
+
+- Custom Roguelike now has a "Show Story" switch, on by default. Turning it off skips story pages and goes straight to the challenge; the setting is stored in NVS.
+
+### Changed
+
+- Hidden challenge odds lowered: each hidden starts at 0.05% (0.3% total), each normal success adds 0.01% per hidden (0.06% × difficulty total), and the post-hidden cooldown is 4 normal challenges.
+- The challenge page hint is split into two lines so it no longer overflows the screen.
+- The safety notice title is now "Notice" in red instead of "Challenge".
+
+### Fixed
+
+- Chapter generation now uses the full 0.01% hidden-chance precision instead of rounding to whole percent.
+
 ## 1.7.1 — 2026-11-28
 
 ### Added

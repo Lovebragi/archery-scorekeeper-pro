@@ -181,6 +181,7 @@ typedef struct {
     uint8_t rogue_block_mod;
     uint8_t rogue_filter_row;
     uint8_t rogue_filter_scroll;
+    bool rogue_show_story;
     bool reset_confirm_yes;
     uint8_t tools_row;
     uint8_t sight_row;

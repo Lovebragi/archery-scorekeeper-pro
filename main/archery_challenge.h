@@ -36,6 +36,9 @@ bool archery_challenge_generate(archery_challenge_t *challenge, uint32_t seed,
 bool archery_challenge_generate_range(archery_challenge_t *challenge, uint32_t seed,
                                       uint8_t hidden_percent, uint8_t min_difficulty,
                                       uint8_t max_difficulty);
+bool archery_challenge_generate_range_chance(archery_challenge_t *challenge, uint32_t seed,
+                                             uint16_t hidden_hundredths, uint8_t min_difficulty,
+                                             uint8_t max_difficulty);
 
 uint8_t archery_challenge_main_count(void);
 uint8_t archery_challenge_mod_count_total(void);

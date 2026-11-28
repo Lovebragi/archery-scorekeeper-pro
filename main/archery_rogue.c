@@ -6,6 +6,7 @@
 static const char *NVS_NAMESPACE = "rogue";
 static const char *KEY_MAIN = "block_main";
 static const char *KEY_MOD = "block_mod";
+static const char *KEY_SHOW = "show_story";
 
 static const uint8_t s_normal_ids[ARCHERY_ROGUE_MAIN_COUNT] = {
     0u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u, 13u, 14u, 15u,
@@ -33,11 +34,21 @@ uint8_t archery_rogue_block_mod(void) {
     return value;
 }
 
-void archery_rogue_save(uint32_t block_main, uint8_t block_mod) {
+bool archery_rogue_show_story(void) {
+    uint8_t value = 1u;
+    nvs_handle_t handle;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) return true;
+    (void)nvs_get_u8(handle, KEY_SHOW, &value);
+    nvs_close(handle);
+    return value != 0u;
+}
+
+void archery_rogue_save(uint32_t block_main, uint8_t block_mod, bool show_story) {
     nvs_handle_t handle;
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return;
     if (nvs_set_u32(handle, KEY_MAIN, block_main) == ESP_OK &&
-        nvs_set_u8(handle, KEY_MOD, block_mod) == ESP_OK) {
+        nvs_set_u8(handle, KEY_MOD, block_mod) == ESP_OK &&
+        nvs_set_u8(handle, KEY_SHOW, show_story ? 1u : 0u) == ESP_OK) {
         (void)nvs_commit(handle);
     }
     nvs_close(handle);
